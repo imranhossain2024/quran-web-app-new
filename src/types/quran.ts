@@ -17,6 +17,22 @@ export interface RawSurah {
 
 export type RawQuranData = RawSurah[];
 
+export interface TranslationAyah {
+  number: number;
+  surahNumber: number;
+  numberInSurah: number;
+  text: string;
+}
+
+export interface TranslationData {
+  edition: {
+    identifier: string;
+    englishName: string;
+    language: string;
+  };
+  ayahs: TranslationAyah[];
+}
+
 export interface Ayah {
   number: number;
   numberInSurah: number;

@@ -62,7 +62,10 @@ export default function AyahCard({ ayah, onPlay }: AyahCardProps) {
   }, [playing, ayah.number]);
 
   return (
-    <article className="my-4 min-w-0 overflow-hidden rounded-md border border-slate-800 bg-slate-900/70 p-4 shadow-sm shadow-slate-950/30 transition-colors hover:border-slate-700 sm:p-5">
+    <article
+      id={`ayah-${ayah.numberInSurah}`}
+      className="scroll-mt-24 my-4 min-w-0 overflow-hidden rounded-md border border-slate-800 bg-slate-900/70 p-4 shadow-sm shadow-slate-950/30 transition-colors hover:border-slate-700 sm:p-5"
+    >
       <div className="flex items-center justify-between">
         <span className="flex h-9 min-w-9 items-center justify-center rounded-md bg-slate-950 px-3 text-sm font-semibold text-emerald-400">
           Ayah {ayah.numberInSurah}

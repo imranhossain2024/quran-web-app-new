@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { getSurahs } from "@/lib/quran";
 
@@ -11,21 +12,39 @@ function highlightText(text: string, query: string) {
     return text;
   }
 
-  const index = text.toLowerCase().indexOf(query.toLowerCase());
+  const normalizedText = text.toLowerCase();
+  const normalizedQuery = query.toLowerCase();
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+  let matchIndex = normalizedText.indexOf(normalizedQuery);
 
-  if (index === -1) {
+  if (matchIndex === -1) {
     return text;
   }
 
-  return (
-    <>
-      {text.slice(0, index)}
-      <mark className="rounded bg-emerald-400/25 px-1 text-emerald-100">
-        {text.slice(index, index + query.length)}
-      </mark>
-      {text.slice(index + query.length)}
-    </>
-  );
+  while (matchIndex !== -1) {
+    if (matchIndex > cursor) {
+      parts.push(text.slice(cursor, matchIndex));
+    }
+
+    parts.push(
+      <mark
+        key={`${matchIndex}-${cursor}`}
+        className="rounded bg-emerald-400/25 px-1 text-emerald-100"
+      >
+        {text.slice(matchIndex, matchIndex + query.length)}
+      </mark>,
+    );
+
+    cursor = matchIndex + query.length;
+    matchIndex = normalizedText.indexOf(normalizedQuery, cursor);
+  }
+
+  if (cursor < text.length) {
+    parts.push(text.slice(cursor));
+  }
+
+  return parts;
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
@@ -96,7 +115,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         {results.map(({ surah, ayah }) => (
           <Link
             key={`${surah.number}-${ayah.numberInSurah}`}
-            href={`/surah/${surah.number}`}
+            href={`/surah/${surah.number}#ayah-${ayah.numberInSurah}`}
             className="block rounded-md border border-slate-800 bg-slate-900/70 p-4 transition-colors hover:border-slate-700 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-400"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">

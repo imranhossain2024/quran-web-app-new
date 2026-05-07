@@ -1,13 +1,19 @@
 import quranJson from "../../public/quran.json";
+import translationJson from "../../public/translations/en-sahih.json";
 import type {
   QuranData,
   RawQuranData,
   RawSurah,
   Surah,
   SurahSummary,
+  TranslationData,
 } from "@/types/quran";
 
 const rawQuran = quranJson as RawQuranData;
+const translationData = translationJson as TranslationData;
+const translationsByNumber = new Map(
+  translationData.ayahs.map((ayah) => [ayah.number, ayah.text]),
+);
 
 function normalizeSurah(rawSurah: RawSurah, startingAyahNumber: number): Surah {
   return {
@@ -20,7 +26,7 @@ function normalizeSurah(rawSurah: RawSurah, startingAyahNumber: number): Surah {
       number: startingAyahNumber + index,
       numberInSurah: verse.id,
       text: verse.text,
-      translation: "",
+      translation: translationsByNumber.get(startingAyahNumber + index) ?? "",
     })),
   };
 }
@@ -57,6 +63,17 @@ export function getSurah(id: number): Surah {
   }
 
   return surah;
+}
+
+export function getAdjacentSurahs(id: number) {
+  return {
+    previous: id > 1 ? getSurahSummaries().find((surah) => surah.number === id - 1) : null,
+    next: id < 114 ? getSurahSummaries().find((surah) => surah.number === id + 1) : null,
+  };
+}
+
+export function getTranslationEdition() {
+  return translationData.edition;
 }
 
 export function getQuranStats() {
