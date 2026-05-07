@@ -40,10 +40,27 @@ interface AudioContextValue {
   errorMessage: string | null;
   reciterId: string;
   autoPlayNext: boolean;
+  currentTime: number;
+  duration: number;
+  volume: number;
+  isMuted: boolean;
+  playbackRate: number;
+  isRepeat: boolean;
+  canPlayNext: boolean;
+  canPlayPrevious: boolean;
   playAyah: (input: PlayAyahInput) => void;
   pause: () => void;
   resume: () => void;
   stop: () => void;
+  seek: (time: number) => void;
+  setVolume: (volume: number) => void;
+  toggleMute: () => void;
+  setPlaybackRate: (rate: number) => void;
+  toggleRepeat: () => void;
+  rewind: (seconds: number) => void;
+  fastForward: (seconds: number) => void;
+  playNextAyah: () => void;
+  playPreviousAyah: () => void;
   setReciter: (reciterId: string) => void;
   setAutoPlayNext: (enabled: boolean) => void;
 }
@@ -55,10 +72,15 @@ const defaultSettings: AudioSettings = {
 
 const AudioContext = createContext<AudioContextValue | null>(null);
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const currentAyahRef = useRef<CurrentAyah | null>(null);
   const autoPlayNextRef = useRef(defaultSettings.autoPlayNext);
+  const lastVolumeRef = useRef(0.8);
   const [settings, setSettings] = useLocalStorage<AudioSettings>(
     "audioSettings",
     defaultSettings,
@@ -66,6 +88,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [currentAyah, setCurrentAyah] = useState<CurrentAyah | null>(null);
   const [status, setStatus] = useState<AudioStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolumeState] = useState(0.8);
+  const [isMuted, setIsMuted] = useState(false);
+  const [playbackRate, setPlaybackRateState] = useState(1);
+  const [isRepeat, setIsRepeat] = useState(false);
 
   useEffect(() => {
     currentAyahRef.current = currentAyah;
@@ -77,7 +105,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const audio = new Audio();
-    audio.preload = "none";
+    audio.preload = "metadata";
+    audio.volume = volume;
+    audio.muted = isMuted;
+    audio.playbackRate = playbackRate;
     audioRef.current = audio;
 
     const handleWaiting = () => setStatus("loading");
@@ -95,6 +126,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setErrorMessage("Audio could not be loaded. Please try again.");
     };
     const handleEnded = () => {
+      if (isRepeat) {
+        audio.currentTime = 0;
+        void audio.play().catch(() => {
+          setStatus("error");
+          setErrorMessage("Could not restart repeating playback.");
+        });
+        return;
+      }
+
       const activeAyah = currentAyahRef.current;
 
       if (
@@ -108,10 +148,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           ayahNumber: nextAyahNumber,
           numberInSurah: activeAyah.numberInSurah + 1,
         };
+
         currentAyahRef.current = nextAyah;
         setCurrentAyah(nextAyah);
         setStatus("loading");
         audio.src = getAyahAudioUrl(nextAyahNumber, activeAyah.reciterId);
+        audio.currentTime = 0;
         void audio.play().catch(() => {
           setStatus("error");
           setErrorMessage("Auto-play stopped because the next audio failed.");
@@ -121,22 +163,46 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
       setStatus("idle");
     };
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+      setErrorMessage(null);
+    };
 
     audio.addEventListener("waiting", handleWaiting);
     audio.addEventListener("playing", handlePlaying);
     audio.addEventListener("pause", handlePause);
     audio.addEventListener("error", handleError);
     audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
 
     return () => {
       audio.pause();
+      audio.src = "";
       audio.removeEventListener("waiting", handleWaiting);
       audio.removeEventListener("playing", handlePlaying);
       audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("error", handleError);
       audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
     };
-  }, []);
+  }, [isRepeat, playbackRate, volume, isMuted]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    if (!audio) {
+      return;
+    }
+
+    audio.volume = volume;
+    audio.muted = isMuted;
+    audio.playbackRate = playbackRate;
+  }, [volume, isMuted, playbackRate]);
 
   const playAyah = useCallback(
     (input: PlayAyahInput) => {
@@ -154,6 +220,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
       currentAyahRef.current = nextAyah;
       setCurrentAyah(nextAyah);
+      setCurrentTime(0);
+      setDuration(0);
       setStatus("loading");
       setErrorMessage(null);
       audio.src = getAyahAudioUrl(input.ayahNumber, reciter.id);
@@ -167,7 +235,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   );
 
   const pause = useCallback(() => {
-    audioRef.current?.pause();
+    const audio = audioRef.current;
+
+    if (!audio) {
+      return;
+    }
+
+    audio.pause();
     setStatus("paused");
   }, []);
 
@@ -196,9 +270,101 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     currentAyahRef.current = null;
     setCurrentAyah(null);
+    setCurrentTime(0);
+    setDuration(0);
     setStatus("idle");
     setErrorMessage(null);
   }, []);
+
+  const seek = useCallback(
+    (time: number) => {
+      const audio = audioRef.current;
+
+      if (!audio) {
+        return;
+      }
+
+      const nextTime = clamp(time, 0, duration || Number.POSITIVE_INFINITY);
+      audio.currentTime = nextTime;
+      setCurrentTime(nextTime);
+    },
+    [duration],
+  );
+
+  const setVolume = useCallback((nextVolume: number) => {
+    const adjusted = clamp(nextVolume, 0, 1);
+    setVolumeState(adjusted);
+    setIsMuted(adjusted === 0);
+
+    if (adjusted > 0) {
+      lastVolumeRef.current = adjusted;
+    }
+  }, []);
+
+  const toggleMute = useCallback(() => {
+    if (isMuted) {
+      setIsMuted(false);
+      setVolumeState(lastVolumeRef.current || 0.8);
+      return;
+    }
+
+    lastVolumeRef.current = volume || lastVolumeRef.current;
+    setIsMuted(true);
+  }, [isMuted, volume]);
+
+  const setPlaybackRate = useCallback((rate: number) => {
+    setPlaybackRateState(rate);
+  }, []);
+
+  const toggleRepeat = useCallback(() => {
+    setIsRepeat((current) => !current);
+  }, []);
+
+  const rewind = useCallback(
+    (seconds: number) => {
+      seek((currentTime || 0) - seconds);
+    },
+    [currentTime, seek],
+  );
+
+  const fastForward = useCallback(
+    (seconds: number) => {
+      seek((currentTime || 0) + seconds);
+    },
+    [currentTime, seek],
+  );
+
+  const playNextAyah = useCallback(() => {
+    const activeAyah = currentAyahRef.current;
+
+    if (!activeAyah || activeAyah.numberInSurah >= activeAyah.surahAyahCount) {
+      return;
+    }
+
+    playAyah({
+      ayahNumber: activeAyah.ayahNumber + 1,
+      numberInSurah: activeAyah.numberInSurah + 1,
+      surahAyahCount: activeAyah.surahAyahCount,
+      surahNumber: activeAyah.surahNumber,
+      surahName: activeAyah.surahName,
+    });
+  }, [playAyah]);
+
+  const playPreviousAyah = useCallback(() => {
+    const activeAyah = currentAyahRef.current;
+
+    if (!activeAyah || activeAyah.numberInSurah <= 1) {
+      return;
+    }
+
+    playAyah({
+      ayahNumber: activeAyah.ayahNumber - 1,
+      numberInSurah: activeAyah.numberInSurah - 1,
+      surahAyahCount: activeAyah.surahAyahCount,
+      surahNumber: activeAyah.surahNumber,
+      surahName: activeAyah.surahName,
+    });
+  }, [playAyah]);
 
   const setReciter = useCallback(
     (reciterId: string) => {
@@ -215,6 +381,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     [setSettings],
   );
 
+  const canPlayNext = useMemo(
+    () =>
+      Boolean(
+        currentAyah && currentAyah.numberInSurah < currentAyah.surahAyahCount,
+      ),
+    [currentAyah],
+  );
+
+  const canPlayPrevious = useMemo(
+    () => Boolean(currentAyah && currentAyah.numberInSurah > 1),
+    [currentAyah],
+  );
+
   const value = useMemo<AudioContextValue>(
     () => ({
       currentAyah,
@@ -222,29 +401,63 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       errorMessage,
       reciterId: settings.reciterId,
       autoPlayNext: settings.autoPlayNext,
+      currentTime,
+      duration,
+      volume,
+      isMuted,
+      playbackRate,
+      isRepeat,
+      canPlayNext,
+      canPlayPrevious,
       playAyah,
       pause,
       resume,
       stop,
+      seek,
+      setVolume,
+      toggleMute,
+      setPlaybackRate,
+      toggleRepeat,
+      rewind,
+      fastForward,
+      playNextAyah,
+      playPreviousAyah,
       setReciter,
       setAutoPlayNext,
     }),
     [
+      canPlayNext,
+      canPlayPrevious,
       currentAyah,
+      currentTime,
+      duration,
       errorMessage,
-      pause,
+      isMuted,
+      isRepeat,
+      playbackRate,
       playAyah,
+      pause,
+      playNextAyah,
+      playPreviousAyah,
       resume,
+      seek,
       setAutoPlayNext,
+      setPlaybackRate,
       setReciter,
+      setVolume,
       settings.autoPlayNext,
       settings.reciterId,
       status,
       stop,
+      toggleMute,
+      toggleRepeat,
+      volume,
     ],
   );
 
-  return <AudioContext.Provider value={value}>{children}</AudioContext.Provider>;
+  return (
+    <AudioContext.Provider value={value}>{children}</AudioContext.Provider>
+  );
 }
 
 export function useAudio() {

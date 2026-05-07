@@ -11,7 +11,7 @@ import IconSidebar from "@/components/Sidebar/IconSidebar";
 import SurahList from "@/components/Sidebar/SurahList";
 import FontSettings from "@/components/Settings/FontSettings";
 import { AudioProvider } from "@/components/Audio/AudioProvider";
-import MiniAudioPlayer from "@/components/Audio/MiniAudioPlayer";
+import AudioPlayer from "@/components/Audio/AudioPlayer";
 import type { SurahSummary } from "@/types/quran";
 
 interface AppShellProps {
@@ -53,7 +53,9 @@ export default function AppShell({ children, surahs }: AppShellProps) {
           </button>
 
           <div className="min-w-0 text-center">
-            <p className="truncate text-sm font-semibold text-white">Quran Reader</p>
+            <p className="truncate text-sm font-semibold text-white">
+              Quran Reader
+            </p>
             <p className="text-xs text-slate-400">Read, listen, reflect</p>
           </div>
 
@@ -85,7 +87,7 @@ export default function AppShell({ children, surahs }: AppShellProps) {
         open={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />
-      <MiniAudioPlayer />
+      <AudioPlayer />
     </AudioProvider>
   );
 }
