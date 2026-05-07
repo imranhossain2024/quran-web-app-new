@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 import { PauseIcon, PlayIcon } from "@heroicons/react/24/solid";
-import { Ayah } from '@/types/quran';
-import { getAyahAudioUrl } from '@/lib/audio';
+import type { Ayah } from "@/types/quran";
+import { getAyahAudioUrl } from "@/lib/audio";
 
 interface AyahCardProps {
   ayah: Ayah;
@@ -22,9 +22,9 @@ export default function AyahCard({ ayah, onPlay }: AyahCardProps) {
     audioRef.current = new Audio(getAyahAudioUrl(ayah.number));
     const audio = audioRef.current;
     const handleEnd = () => setPlaying(false);
-    audio.addEventListener('ended', handleEnd);
+    audio.addEventListener("ended", handleEnd);
     return () => {
-      audio.removeEventListener('ended', handleEnd);
+      audio.removeEventListener("ended", handleEnd);
       audio.pause();
     };
   }, [ayah.number]);
@@ -38,8 +38,7 @@ export default function AyahCard({ ayah, onPlay }: AyahCardProps) {
     } else {
       onPlay?.(ayah.number);
       audio.currentTime = 0;
-      audio.play();
-      setPlaying(true);
+      void audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
     }
   };
 
@@ -51,19 +50,19 @@ export default function AyahCard({ ayah, onPlay }: AyahCardProps) {
         setPlaying(false);
       }
     };
-    window.addEventListener('ayah-play', handler as EventListener);
-    return () => window.removeEventListener('ayah-play', handler as EventListener);
+    window.addEventListener("ayah-play", handler as EventListener);
+    return () => window.removeEventListener("ayah-play", handler as EventListener);
   }, [playing, ayah.number]);
 
   useEffect(() => {
     if (playing) {
-      const ev = new CustomEvent('ayah-play', { detail: ayah.number });
+      const ev = new CustomEvent("ayah-play", { detail: ayah.number });
       window.dispatchEvent(ev);
     }
   }, [playing, ayah.number]);
 
   return (
-    <article className="my-4 rounded-md border border-slate-800 bg-slate-900/70 p-4 shadow-sm shadow-slate-950/30 transition-colors hover:border-slate-700 sm:p-5">
+    <article className="my-4 min-w-0 overflow-hidden rounded-md border border-slate-800 bg-slate-900/70 p-4 shadow-sm shadow-slate-950/30 transition-colors hover:border-slate-700 sm:p-5">
       <div className="flex items-center justify-between">
         <span className="flex h-9 min-w-9 items-center justify-center rounded-md bg-slate-950 px-3 text-sm font-semibold text-emerald-400">
           Ayah {ayah.numberInSurah}
@@ -76,18 +75,25 @@ export default function AyahCard({ ayah, onPlay }: AyahCardProps) {
               ? "bg-emerald-500 text-slate-950"
               : "bg-slate-800 text-slate-200 hover:bg-slate-700"
           }`}
-          aria-label={playing ? 'Pause ayah audio' : 'Play ayah audio'}
+          aria-label={playing ? "Pause ayah audio" : "Play ayah audio"}
         >
-          {playing ? <PauseIcon className="h-5 w-5" aria-hidden /> : <PlayIcon className="h-5 w-5" aria-hidden />}
+          {playing ? (
+            <PauseIcon className="h-5 w-5" aria-hidden />
+          ) : (
+            <PlayIcon className="h-5 w-5" aria-hidden />
+          )}
         </button>
       </div>
       <div className="mt-5 grid gap-4 md:grid-cols-12 md:items-start">
         <p
-          className={`${ayah.translation ? "md:col-span-8" : "md:col-span-12"} arabic-text text-right leading-loose text-slate-50`}
+          className={`${ayah.translation ? "md:col-span-8" : "md:col-span-12"} arabic-text min-w-0 text-right leading-loose text-slate-50`}
           dir="rtl"
           lang="ar"
         >
           {ayah.text}
+          <span className="mr-3 inline-flex h-8 min-w-8 items-center justify-center rounded-full border border-emerald-500/40 px-2 align-middle text-sm leading-none text-emerald-300">
+            {ayah.numberInSurah}
+          </span>
         </p>
         {ayah.translation ? (
           <p className="translation-text text-left leading-7 text-slate-300 md:col-span-4">

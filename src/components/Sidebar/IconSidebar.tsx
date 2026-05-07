@@ -6,7 +6,7 @@ import {
   HomeIcon,
   HeartIcon,
   BookmarkIcon,
-  CogIcon,
+  Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 
 interface NavItem {
@@ -15,14 +15,17 @@ interface NavItem {
   Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }
 
+interface IconSidebarProps {
+  onOpenSettings: () => void;
+}
+
 const navItems: NavItem[] = [
-  { href: '/', label: 'Home', Icon: HomeIcon },
-  { href: '/favorites', label: 'Favorites', Icon: HeartIcon },
-  { href: '/bookmarks', label: 'Bookmarks', Icon: BookmarkIcon },
-  { href: '/settings', label: 'Settings', Icon: CogIcon },
+  { href: "/", label: "Home", Icon: HomeIcon },
+  { href: "/favorites", label: "Favorites", Icon: HeartIcon },
+  { href: "/bookmarks", label: "Bookmarks", Icon: BookmarkIcon },
 ];
 
-export default function IconSidebar() {
+export default function IconSidebar({ onOpenSettings }: IconSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -35,6 +38,7 @@ export default function IconSidebar() {
           key={href}
           href={href}
           aria-label={label}
+          title={label}
           className={`mb-3 flex h-11 w-11 items-center justify-center rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
             pathname === href
               ? "bg-emerald-500 text-slate-950"
@@ -45,6 +49,15 @@ export default function IconSidebar() {
           <span className="sr-only">{label}</span>
         </Link>
       ))}
+      <button
+        type="button"
+        onClick={onOpenSettings}
+        aria-label="Settings"
+        title="Settings"
+        className="mt-auto flex h-11 w-11 items-center justify-center rounded-md text-slate-300 transition-colors hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-400"
+      >
+        <Cog6ToothIcon className="h-6 w-6" aria-hidden />
+      </button>
     </nav>
   );
 }
