@@ -1,65 +1,46 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
 import { PauseIcon, PlayIcon } from "@heroicons/react/24/solid";
 import type { Ayah } from "@/types/quran";
-import { getAyahAudioUrl } from "@/lib/audio";
+import { useAudio } from "@/components/Audio/AudioProvider";
 
 interface AyahCardProps {
   ayah: Ayah;
-  /**
-   * Optional callback when this ayah starts playing. Allows a parent to enforce
-   * only‑one‑audio‑track at a time.
-   */
-  onPlay?: (ayahNumber: number) => void;
+  surahNumber: number;
+  surahName: string;
+  surahAyahCount: number;
 }
 
-export default function AyahCard({ ayah, onPlay }: AyahCardProps) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [playing, setPlaying] = useState(false);
-
-  useEffect(() => {
-    audioRef.current = new Audio(getAyahAudioUrl(ayah.number));
-    const audio = audioRef.current;
-    const handleEnd = () => setPlaying(false);
-    audio.addEventListener("ended", handleEnd);
-    return () => {
-      audio.removeEventListener("ended", handleEnd);
-      audio.pause();
-    };
-  }, [ayah.number]);
+export default function AyahCard({
+  ayah,
+  surahNumber,
+  surahName,
+  surahAyahCount,
+}: AyahCardProps) {
+  const { currentAyah, status, playAyah, pause, resume } = useAudio();
+  const isActive = currentAyah?.ayahNumber === ayah.number;
+  const isPlaying = isActive && status === "playing";
+  const isLoading = isActive && status === "loading";
 
   const togglePlay = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (playing) {
-      audio.pause();
-      setPlaying(false);
-    } else {
-      onPlay?.(ayah.number);
-      audio.currentTime = 0;
-      void audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+    if (isPlaying) {
+      pause();
+      return;
     }
+
+    if (isActive) {
+      resume();
+      return;
+    }
+
+    playAyah({
+      ayahNumber: ayah.number,
+      numberInSurah: ayah.numberInSurah,
+      surahAyahCount,
+      surahNumber,
+      surahName,
+    });
   };
-
-  useEffect(() => {
-    if (!playing) return;
-    const handler = (ev: CustomEvent<number>) => {
-      if (ev.detail !== ayah.number) {
-        audioRef.current?.pause();
-        setPlaying(false);
-      }
-    };
-    window.addEventListener("ayah-play", handler as EventListener);
-    return () => window.removeEventListener("ayah-play", handler as EventListener);
-  }, [playing, ayah.number]);
-
-  useEffect(() => {
-    if (playing) {
-      const ev = new CustomEvent("ayah-play", { detail: ayah.number });
-      window.dispatchEvent(ev);
-    }
-  }, [playing, ayah.number]);
 
   return (
     <article
@@ -74,13 +55,13 @@ export default function AyahCard({ ayah, onPlay }: AyahCardProps) {
           type="button"
           onClick={togglePlay}
           className={`flex h-10 w-10 items-center justify-center rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
-            playing
+            isPlaying
               ? "bg-emerald-500 text-slate-950"
               : "bg-slate-800 text-slate-200 hover:bg-slate-700"
           }`}
-          aria-label={playing ? "Pause ayah audio" : "Play ayah audio"}
+          aria-label={isPlaying ? "Pause ayah audio" : "Play ayah audio"}
         >
-          {playing ? (
+          {isPlaying || isLoading ? (
             <PauseIcon className="h-5 w-5" aria-hidden />
           ) : (
             <PlayIcon className="h-5 w-5" aria-hidden />

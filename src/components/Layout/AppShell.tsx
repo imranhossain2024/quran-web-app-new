@@ -10,6 +10,8 @@ import {
 import IconSidebar from "@/components/Sidebar/IconSidebar";
 import SurahList from "@/components/Sidebar/SurahList";
 import FontSettings from "@/components/Settings/FontSettings";
+import { AudioProvider } from "@/components/Audio/AudioProvider";
+import MiniAudioPlayer from "@/components/Audio/MiniAudioPlayer";
 import type { SurahSummary } from "@/types/quran";
 
 interface AppShellProps {
@@ -31,7 +33,7 @@ export default function AppShell({ children, surahs }: AppShellProps) {
   }, [isSurahMenuOpen, isSettingsOpen]);
 
   return (
-    <>
+    <AudioProvider>
       <IconSidebar onOpenSettings={() => setIsSettingsOpen(true)} />
       <SurahList
         surahs={surahs}
@@ -83,6 +85,7 @@ export default function AppShell({ children, surahs }: AppShellProps) {
         open={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />
-    </>
+      <MiniAudioPlayer />
+    </AudioProvider>
   );
 }

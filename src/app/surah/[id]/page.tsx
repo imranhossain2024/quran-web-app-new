@@ -50,7 +50,13 @@ export default async function SurahPage({ params }: SurahPageProps) {
       )}
       <div className="pb-12">
         {surah.ayahs.map((ayah) => (
-          <AyahCard key={ayah.number} ayah={ayah} />
+          <AyahCard
+            key={ayah.number}
+            ayah={ayah}
+            surahNumber={surah.number}
+            surahName={surah.englishName}
+            surahAyahCount={surah.numberOfAyahs}
+          />
         ))}
       </div>
       <nav

@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useLocalStorage } from "@/lib/useLocalStorage";
+import { AUDIO_RECITERS } from "@/lib/audio";
+import { useAudio } from "@/components/Audio/AudioProvider";
 
 interface FontSettingsProps {
   open: boolean;
@@ -28,6 +30,7 @@ const arabicFonts = [
 ] as const;
 
 export default function FontSettings({ open, onClose }: FontSettingsProps) {
+  const { reciterId, autoPlayNext, setReciter, setAutoPlayNext } = useAudio();
   const [settings, setSettings] = useLocalStorage<FontSettingsState>(
     "fontSettings",
     defaultSettings,
@@ -163,6 +166,51 @@ export default function FontSettings({ open, onClose }: FontSettingsProps) {
             <p className="translation-text mt-3 leading-7 text-slate-300">
               In the name of Allah, the Entirely Merciful, the Especially Merciful.
             </p>
+          </div>
+
+          <div className="space-y-4 border-t border-slate-800 pt-6">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                Audio
+              </p>
+              <h3 className="mt-1 text-lg font-semibold text-white">Recitation</h3>
+            </div>
+
+            <label className="block">
+              <span className="text-sm font-medium text-slate-200">Preferred reciter</span>
+              <select
+                value={reciterId}
+                onChange={(event) => setReciter(event.target.value)}
+                className="mt-2 h-11 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100 outline-none transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/30"
+              >
+                {AUDIO_RECITERS.map((reciter) => (
+                  <option key={reciter.id} value={reciter.id}>
+                    {reciter.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs leading-5 text-slate-400">
+                Mishary Rashid Alafasy is the default because his clear, melodic
+                recitation is familiar to many listeners.
+              </p>
+            </label>
+
+            <label className="flex items-center justify-between gap-4 rounded-md border border-slate-800 bg-slate-900/70 p-4">
+              <span>
+                <span className="block text-sm font-medium text-slate-200">
+                  Auto-play next ayah
+                </span>
+                <span className="mt-1 block text-xs text-slate-400">
+                  Continue within the current Surah.
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={autoPlayNext}
+                onChange={(event) => setAutoPlayNext(event.target.checked)}
+                className="h-5 w-5 accent-emerald-500"
+              />
+            </label>
           </div>
         </div>
 
