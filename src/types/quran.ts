@@ -34,3 +34,5 @@ export interface Surah {
 }
 
 export type QuranData = Surah[];
+
+export type SurahSummary = Omit<Surah, "ayahs">;

@@ -1,5 +1,11 @@
 import quranJson from "../../public/quran.json";
-import type { QuranData, RawQuranData, RawSurah, Surah } from "@/types/quran";
+import type {
+  QuranData,
+  RawQuranData,
+  RawSurah,
+  Surah,
+  SurahSummary,
+} from "@/types/quran";
 
 const rawQuran = quranJson as RawQuranData;
 
@@ -31,6 +37,16 @@ export function loadQuran(): QuranData {
 
 export function getSurahs(): QuranData {
   return loadQuran();
+}
+
+export function getSurahSummaries(): SurahSummary[] {
+  return loadQuran().map((surah) => ({
+    number: surah.number,
+    name: surah.name,
+    englishName: surah.englishName,
+    revelation: surah.revelation,
+    numberOfAyahs: surah.numberOfAyahs,
+  }));
 }
 
 export function getSurah(id: number): Surah {

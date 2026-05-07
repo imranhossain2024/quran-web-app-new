@@ -1,11 +1,13 @@
-// src/components/Sidebar/IconSidebar.tsx
-import Link from 'next/link';
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   HomeIcon,
   HeartIcon,
   BookmarkIcon,
   CogIcon,
-} from '@heroicons/react/24/outline';
+} from "@heroicons/react/24/outline";
 
 interface NavItem {
   href: string;
@@ -21,11 +23,25 @@ const navItems: NavItem[] = [
 ];
 
 export default function IconSidebar() {
+  const pathname = usePathname();
+
   return (
-    <nav className="fixed inset-y-0 left-0 flex flex-col items-center w-16 bg-slate-900 text-gray-200 hover:text-white transition-colors">
+    <nav
+      aria-label="Primary"
+      className="fixed inset-y-0 left-0 z-40 hidden w-16 flex-col items-center border-r border-slate-800 bg-slate-950 px-2 py-4 text-slate-300 shadow-xl lg:flex"
+    >
       {navItems.map(({ href, label, Icon }) => (
-        <Link key={href} href={href} className="my-4 p-2 rounded hover:bg-slate-800">
-          <Icon className="h-6 w-6" aria-hidden="true" />
+        <Link
+          key={href}
+          href={href}
+          aria-label={label}
+          className={`mb-3 flex h-11 w-11 items-center justify-center rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
+            pathname === href
+              ? "bg-emerald-500 text-slate-950"
+              : "text-slate-300 hover:bg-slate-800 hover:text-white"
+          }`}
+        >
+          <Icon className="h-6 w-6" aria-hidden />
           <span className="sr-only">{label}</span>
         </Link>
       ))}
