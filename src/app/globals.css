@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=KFGQ+PC+Sans+Bold&family=Amiri&family=Scheherazade&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  /* Arabic font stack */
+  --font-arabic: 'KFGQ PC Sans Bold', 'Amiri', 'Scheherazade', sans-serif;
+  /* Font sizes (can be overridden via UI) */
+  --size-arabic: 32px;
+  --size-translation: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Arabic text styling */
+.arabic-text {
+  font-family: var(--font-arabic);
+  font-size: var(--size-arabic);
+  direction: rtl;
+  text-align: right;
+}
+
+/* Translation text styling */
+.translation-text {
+  font-size: var(--size-translation);
+}
+
+/* Helper dark background class */
+.bg-dark {
+  background-color: #0f172a; /* Tailwind slate-900 */
+  color: #f1f5f9;
+}
