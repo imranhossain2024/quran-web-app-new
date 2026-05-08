@@ -31,7 +31,8 @@ export default function IconSidebar({ onOpenSettings }: IconSidebarProps) {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-y-0 left-0 z-40 hidden w-16 flex-col items-center border-r border-slate-800 bg-slate-950 px-2 py-4 text-slate-300 shadow-xl lg:flex"
+      className="fixed inset-y-0 left-0 z-50 hidden w-16 flex-col items-center border-r border-slate-200 dark:border-slate-800 px-2 py-4 shadow-xl lg:flex"
+      style={{ backgroundColor: "var(--sidebar-bg)", color: "var(--sidebar-text)" }}
     >
       {navItems.map(({ href, label, Icon }) => (
         <Link
@@ -41,8 +42,8 @@ export default function IconSidebar({ onOpenSettings }: IconSidebarProps) {
           title={label}
           className={`mb-3 flex h-11 w-11 items-center justify-center rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
             pathname === href
-              ? "bg-emerald-500 text-slate-950"
-              : "text-slate-300 hover:bg-slate-800 hover:text-white"
+              ? "bg-emerald-500 text-white"
+              : "text-inherit opacity-70 hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10"
           }`}
         >
           <Icon className="h-6 w-6" aria-hidden />
@@ -54,7 +55,7 @@ export default function IconSidebar({ onOpenSettings }: IconSidebarProps) {
         onClick={onOpenSettings}
         aria-label="Settings"
         title="Settings"
-        className="mt-auto flex h-11 w-11 items-center justify-center rounded-md text-slate-300 transition-colors hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-400"
+        className="mt-auto flex h-11 w-11 items-center justify-center rounded-md text-inherit opacity-70 transition-colors hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400"
       >
         <Cog6ToothIcon className="h-6 w-6" aria-hidden />
       </button>

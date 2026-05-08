@@ -1,4 +1,6 @@
 import type { Surah } from "@/types/quran";
+import FavoriteButton from "./FavoriteButton";
+
 
 interface SurahHeaderProps {
   surah: Surah;
@@ -6,7 +8,10 @@ interface SurahHeaderProps {
 
 export default function SurahHeader({ surah }: SurahHeaderProps) {
   return (
-    <header className="min-w-0 overflow-hidden rounded-md border border-slate-800 bg-slate-900/80 px-5 py-7 text-center shadow-lg shadow-slate-950/30 sm:px-8">
+    <header className="relative min-w-0 overflow-hidden rounded-md border border-slate-800 bg-slate-900/80 px-5 py-7 text-center shadow-lg shadow-slate-950/30 sm:px-8">
+      <div className="absolute right-4 top-4">
+        <FavoriteButton surahNumber={surah.number} />
+      </div>
       <p className="text-sm font-medium text-emerald-400">Surah {surah.number}</p>
       <h1 className="mt-2 text-2xl font-bold leading-tight text-white sm:text-3xl">
         {surah.englishName}

@@ -23,7 +23,6 @@ interface PlayAyahInput {
   surahAyahCount: number;
   surahNumber: number;
   surahName: string;
-  arabicText?: string;
 }
 
 interface CurrentAyah extends PlayAyahInput {
@@ -62,7 +61,6 @@ interface AudioContextValue {
   setAutoPlayNext: (enabled: boolean) => void;
   increaseVolume: (step?: number) => void;
   decreaseVolume: (step?: number) => void;
-  audioRef: React.RefObject<HTMLAudioElement | null>;
 }
 
 const defaultSettings: AudioSettings = {
@@ -136,7 +134,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           ...activeAyah,
           ayahNumber: nextAyahNumber,
           numberInSurah: activeAyah.numberInSurah + 1,
-          arabicText: undefined, // Will be fetched if needed or we could fetch it here
         };
 
         currentAyahRef.current = nextAyah;
@@ -425,10 +422,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setAutoPlayNext,
       increaseVolume,
       decreaseVolume,
-      audioRef,
     }),
     [
-      audioRef,
       canPlayNext,
       canPlayPrevious,
       currentAyah,

@@ -4,11 +4,28 @@
 :root {
   --background: #020617;
   --foreground: #f8fafc;
+  --sidebar-bg: #0f172a;
+  --sidebar-text: #f1f5f9;
   --font-arabic: 'KFGQ PC Sans Bold', 'Amiri', 'Scheherazade', serif;
   --size-arabic: 32px;
   --size-translation: 16px;
   --reader-width: 56rem;
   --sidebar-width: 20rem;
+  --arabic-line-height: 1.8;
+}
+
+[data-theme="light"] {
+  --background: #ffffff;
+  --foreground: #0f172a;
+  --sidebar-bg: #f8fafc;
+  --sidebar-text: #0f172a;
+}
+
+[data-theme="sepia"] {
+  --background: #f4ecd8;
+  --foreground: #5b4636;
+  --sidebar-bg: #efdfbb;
+  --sidebar-text: #5b4636;
 }
 
 body {
@@ -30,6 +47,7 @@ body {
 .arabic-text {
   font-family: var(--font-arabic);
   font-size: var(--size-arabic);
+  line-height: var(--arabic-line-height);
   direction: rtl;
   overflow-wrap: anywhere;
   text-align: right;

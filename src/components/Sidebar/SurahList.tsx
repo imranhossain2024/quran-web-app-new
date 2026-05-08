@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { 
+  XMarkIcon, 
+} from "@heroicons/react/24/outline";
 import SearchBox from "@/components/Search/SearchBox";
 import type { SurahSummary } from "@/types/quran";
 
@@ -11,46 +13,90 @@ interface SurahListProps {
   surahs: SurahSummary[];
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
+
+type SidebarTab = "surah" | "juz" | "page";
 
 export default function SurahList({
   surahs,
   mobileOpen = false,
   onMobileClose,
+  isCollapsed = false,
+  onToggleCollapse,
 }: SurahListProps) {
+  const [activeTab, setActiveTab] = useState<SidebarTab>("surah");
   const [search, setSearch] = useState("");
   const pathname = usePathname();
 
-  const filteredSurahs = useMemo(() => {
+  // Generate Juz data (1-30)
+  const juzs = useMemo(() => Array.from({ length: 30 }, (_, i) => i + 1), []);
+  // Generate Page data (1-604)
+  const pages = useMemo(() => Array.from({ length: 604 }, (_, i) => i + 1), []);
+
+  const filteredItems = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    if (!query) {
-      return surahs;
-    }
-
-    return surahs.filter((surah) => {
-      return (
+    if (activeTab === "surah") {
+      if (!query) return surahs;
+      return surahs.filter((surah) => 
         surah.number.toString().includes(query) ||
         surah.englishName.toLowerCase().includes(query) ||
-        surah.name.includes(query) ||
-        surah.revelation.toLowerCase().includes(query)
+        surah.name.includes(query)
       );
-    });
-  }, [search, surahs]);
+    }
+
+    if (activeTab === "juz") {
+      if (!query) return juzs;
+      return juzs.filter((j) => j.toString().includes(query));
+    }
+
+    if (activeTab === "page") {
+      if (!query) return pages;
+      return pages.filter((p) => p.toString().includes(query));
+    }
+
+    return [];
+  }, [activeTab, search, surahs, juzs, pages]);
 
   const panel = (
     <>
       <div className="border-b border-slate-800 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
-          Quran Reader
-        </p>
-        <div className="mt-2 flex items-center justify-between gap-4">
-          <h2 className="text-xl font-semibold text-white">Surahs</h2>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+            Quran Reader
+          </p>
+        </div>
+
+        <nav className="mt-4 flex flex-wrap gap-2 lg:hidden">
+          <Link href="/" onClick={onMobileClose} className="rounded-md bg-black/10 dark:bg-black/30 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">Home</Link>
+          <Link href="/surah/1" onClick={onMobileClose} className="rounded-md bg-black/10 dark:bg-black/30 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">Read Quran</Link>
+          <Link href="/prayer-time" onClick={onMobileClose} className="rounded-md bg-black/10 dark:bg-black/30 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">Prayer Time</Link>
+          <Link href="/ramadan" onClick={onMobileClose} className="rounded-md bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-500 dark:text-emerald-400">Ramadan 2026</Link>
+        </nav>
+
+        <div className="mt-4 flex items-center justify-between gap-4">
+          <div className="flex flex-1 items-center gap-1 rounded-lg bg-black/10 dark:bg-black/40 p-1">
+            {(["surah", "juz", "page"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 rounded-md py-1.5 text-xs font-bold capitalize transition-all ${
+                  activeTab === tab
+                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             onClick={onMobileClose}
-            className="flex h-10 w-10 items-center justify-center rounded-md text-slate-300 transition-colors hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 lg:hidden"
-            aria-label="Close surah menu"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-800 hover:text-white lg:hidden"
+            aria-label="Close menu"
           >
             <XMarkIcon className="h-5 w-5" aria-hidden />
           </button>
@@ -59,15 +105,19 @@ export default function SurahList({
           <SearchBox
             value={search}
             onChange={setSearch}
-            placeholder="Search by name or number"
-            label="Search surahs"
+            placeholder={
+              activeTab === "surah"
+                ? "Search surah name or number"
+                : `Search ${activeTab} number`
+            }
+            label={`Search ${activeTab}`}
           />
         </div>
       </div>
 
       <nav aria-label="Surah list" className="min-h-0 flex-1 overflow-y-auto p-3">
         <ul className="space-y-1">
-          {filteredSurahs.map((surah) => {
+          {activeTab === "surah" && (filteredItems as SurahSummary[]).map((surah) => {
             const href = `/surah/${surah.number}`;
             const isActive = pathname === href;
 
@@ -78,16 +128,16 @@ export default function SurahList({
                   onClick={onMobileClose}
                   className={`grid grid-cols-[2.75rem_1fr_auto] items-center gap-3 rounded-md border p-3 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
                     isActive
-                      ? "border-emerald-500/70 bg-emerald-500/15 text-white"
-                      : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/80 hover:text-white"
+                      ? "border-emerald-500/70 bg-emerald-500/15 text-emerald-500 dark:text-emerald-300"
+                      : "border-transparent text-inherit opacity-80 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5"
                   }`}
                   aria-current={isActive ? "page" : undefined}
                 >
                   <span
                     className={`flex h-10 w-10 items-center justify-center rounded-md text-sm font-semibold ${
                       isActive
-                        ? "bg-emerald-500 text-slate-950"
-                        : "bg-slate-800 text-slate-300"
+                        ? "bg-emerald-500 text-white"
+                        : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                     }`}
                   >
                     {surah.number}
@@ -107,10 +157,42 @@ export default function SurahList({
               </li>
             );
           })}
+
+          {activeTab !== "surah" && (filteredItems as number[]).map((num) => {
+            // Simplified link for Juz and Page
+            const href = activeTab === "juz" ? `/juz/${num}` : `/page/${num}`;
+            const isActive = pathname === href;
+
+            return (
+              <li key={num}>
+                <Link
+                  href={href}
+                  onClick={onMobileClose}
+                  className={`flex items-center gap-4 rounded-md border p-3 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
+                    isActive
+                      ? "border-emerald-500/70 bg-emerald-500/15 text-emerald-500 dark:text-emerald-300"
+                      : "border-transparent text-inherit opacity-80 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5"
+                  }`}
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-slate-200 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    {num}
+                  </span>
+                  <div>
+                    <span className="block text-sm font-semibold capitalize">
+                      {activeTab} {num}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-slate-400">
+                      Jump to {activeTab} {num}
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
 
-        {filteredSurahs.length === 0 ? (
-          <p className="px-3 py-6 text-sm text-slate-400">No surah found.</p>
+        {filteredItems.length === 0 ? (
+          <p className="px-3 py-6 text-sm text-slate-400">No {activeTab} found.</p>
         ) : null}
       </nav>
     </>
@@ -118,7 +200,12 @@ export default function SurahList({
 
   return (
     <>
-      <aside className="fixed inset-y-0 left-16 z-30 hidden w-80 border-r border-slate-800 bg-slate-900 text-slate-100 lg:flex lg:flex-col">
+      <aside 
+        className={`fixed inset-y-0 left-16 z-40 hidden w-80 border-r border-slate-200 dark:border-slate-800 lg:flex lg:flex-col transition-all duration-300 ${
+          isCollapsed ? "-translate-x-full opacity-0 pointer-events-none" : "translate-x-0 opacity-100"
+        }`}
+        style={{ backgroundColor: "var(--sidebar-bg)", color: "var(--sidebar-text)" }}
+      >
         {panel}
       </aside>
 
@@ -137,9 +224,10 @@ export default function SurahList({
           }`}
         />
         <aside
-          className={`absolute inset-y-0 left-0 flex w-full max-w-sm flex-col border-r border-slate-800 bg-slate-900 text-slate-100 shadow-2xl shadow-black transition-transform duration-300 ${
+          className={`absolute inset-y-0 left-0 flex w-full max-w-sm flex-col border-r border-slate-200 dark:border-slate-800 shadow-2xl transition-transform duration-300 ${
             mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
+          style={{ backgroundColor: "var(--sidebar-bg)", color: "var(--sidebar-text)" }}
           aria-label="Mobile surah list"
         >
           {panel}

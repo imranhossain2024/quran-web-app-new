@@ -56,7 +56,6 @@ export default function AudioPlayer() {
     fastForward,
     increaseVolume,
     decreaseVolume,
-    audioRef,
   } = useAudio();
 
   const isPlaying = status === "playing";
