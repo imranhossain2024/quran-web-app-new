@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useEffect } from "react";
+import { useRef } from "react";
 import {
   Loader2,
   Pause,
@@ -60,6 +61,7 @@ export default function AudioPlayer() {
 
   const isPlaying = status === "playing";
   const isLoading = status === "loading";
+  const containerRef = useRef<HTMLElement | null>(null);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -133,12 +135,38 @@ export default function AudioPlayer() {
     return Math.min(Math.max((currentTime / duration) * 100, 0), 100);
   }, [currentTime, duration]);
 
+  useEffect(() => {
+    if (!currentAyah || !containerRef.current) {
+      document.documentElement.style.setProperty("--audio-player-offset", "0px");
+      return;
+    }
+
+    const updateOffset = () => {
+      if (!containerRef.current) return;
+      const height = containerRef.current.getBoundingClientRect().height;
+      // Keep floating quick actions above the audio controller with safe spacing.
+      document.documentElement.style.setProperty(
+        "--audio-player-offset",
+        `${Math.ceil(height) + 20}px`,
+      );
+    };
+
+    updateOffset();
+    const observer = new ResizeObserver(updateOffset);
+    observer.observe(containerRef.current);
+
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.setProperty("--audio-player-offset", "0px");
+    };
+  }, [currentAyah]);
+
   if (!currentAyah) {
     return null;
   }
 
   return (
-    <section className="fixed inset-x-0 bottom-0 z-50 px-3 pb-3 sm:px-5 lg:left-96 lg:px-8">
+    <section ref={containerRef} className="fixed inset-x-0 bottom-0 z-50 px-3 pb-3 sm:px-5 lg:left-96 lg:px-8">
       <div className="mx-auto max-w-6xl overflow-hidden rounded-t-3xl border border-[#c9a84c]/20 bg-[#08151d]/95 text-slate-100 shadow-[0_0_80px_rgba(20,37,56,0.35)] backdrop-blur-xl">
         <button
           type="button"

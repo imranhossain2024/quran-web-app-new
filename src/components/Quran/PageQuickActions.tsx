@@ -13,7 +13,10 @@ export default function PageQuickActions({ currentPage }: PageQuickActionsProps)
   };
 
   return (
-    <div className="fixed right-5 bottom-5 z-40 flex flex-col gap-2">
+    <div
+      className="fixed right-5 z-40 flex flex-col gap-2 transition-[bottom] duration-300"
+      style={{ bottom: "calc(1.25rem + var(--audio-player-offset, 0px))" }}
+    >
       <button
         type="button"
         onClick={scrollToTop}

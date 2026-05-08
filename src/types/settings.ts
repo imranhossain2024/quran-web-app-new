@@ -3,7 +3,7 @@ export interface ReadingSettingsState {
   arabicSize: number;
   translationSize: number;
   showTranslation: boolean;
-  theme: "dark" | "light" | "sepia";
+  theme: "dark" | "light" | "system" | "sepia";
   lineHeight: number;
 }
 
@@ -12,6 +12,6 @@ export const DEFAULT_READING_SETTINGS: ReadingSettingsState = {
   arabicSize: 32,
   translationSize: 16,
   showTranslation: true,
-  theme: "dark",
+  theme: "system",
   lineHeight: 1.8,
 };

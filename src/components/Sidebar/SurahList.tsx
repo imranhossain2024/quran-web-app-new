@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 import { 
-  XMarkIcon, 
+  XMarkIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import SearchBox from "@/components/Search/SearchBox";
+import { normalizeText } from "@/lib/search";
 import type { SurahSummary } from "@/types/quran";
 
 interface SurahListProps {
@@ -36,15 +38,20 @@ export default function SurahList({
   const pages = useMemo(() => Array.from({ length: 604 }, (_, i) => i + 1), []);
 
   const filteredItems = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = normalizeText(search);
 
     if (activeTab === "surah") {
       if (!query) return surahs;
-      return surahs.filter((surah) => 
-        surah.number.toString().includes(query) ||
-        surah.englishName.toLowerCase().includes(query) ||
-        surah.name.includes(query)
-      );
+      return surahs.filter((surah) => {
+        const normalizedEnglishName = normalizeText(surah.englishName);
+        const normalizedArabicName = surah.name; // Keep Arabic as is for matching
+        
+        return (
+          surah.number.toString().includes(query) ||
+          normalizedEnglishName.includes(query) ||
+          normalizedArabicName.includes(query)
+        );
+      });
     }
 
     if (activeTab === "juz") {
@@ -192,7 +199,21 @@ export default function SurahList({
         </ul>
 
         {filteredItems.length === 0 ? (
-          <p className="px-3 py-6 text-sm text-slate-400">No {activeTab} found.</p>
+          <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-800/50 text-slate-500 mb-4">
+              <MagnifyingGlassIcon className="h-6 w-6" />
+            </div>
+            <p className="text-sm font-medium text-slate-300">No results found</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Try searching for a different surah name, number, or {activeTab}.
+            </p>
+            <button
+              onClick={() => setSearch("")}
+              className="mt-4 text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+            >
+              Clear search
+            </button>
+          </div>
         ) : null}
       </nav>
     </>

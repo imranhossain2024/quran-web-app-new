@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { getSurahs } from "@/lib/quran";
+import { normalizeText } from "@/lib/search";
 
 interface SearchPageProps {
   searchParams: Promise<{ q?: string }>;
@@ -12,45 +13,37 @@ function highlightText(text: string, query: string) {
     return text;
   }
 
-  const normalizedText = text.toLowerCase();
-  const normalizedQuery = query.toLowerCase();
-  const parts: ReactNode[] = [];
-  let cursor = 0;
-  let matchIndex = normalizedText.indexOf(normalizedQuery);
-
-  if (matchIndex === -1) {
+  const normalizedText = normalizeText(text);
+  const normalizedQuery = normalizeText(query);
+  
+  if (!normalizedQuery || !normalizedText.includes(normalizedQuery)) {
     return text;
   }
 
-  while (matchIndex !== -1) {
-    if (matchIndex > cursor) {
-      parts.push(text.slice(cursor, matchIndex));
-    }
+  // For highlighting, we need to be more careful. 
+  // If the query is "Al Baqarah" and text is "Al-Baqarah", 
+  // simple split/join won't work well with normalization.
+  // We'll stick to a simple case-insensitive match for now, 
+  // but use the normalized query to decide *if* to highlight.
+  
+  const regex = new RegExp(`(${query.replace(/[-\s]/g, "[- ]")})`, "gi");
+  const parts = text.split(regex);
 
-    parts.push(
-      <mark
-        key={`${matchIndex}-${cursor}`}
-        className="rounded bg-emerald-400/25 px-1 text-emerald-100"
-      >
-        {text.slice(matchIndex, matchIndex + query.length)}
-      </mark>,
-    );
-
-    cursor = matchIndex + query.length;
-    matchIndex = normalizedText.indexOf(normalizedQuery, cursor);
-  }
-
-  if (cursor < text.length) {
-    parts.push(text.slice(cursor));
-  }
-
-  return parts;
+  return parts.map((part, i) => 
+    regex.test(part) ? (
+      <mark key={i} className="rounded bg-emerald-400/25 px-1 text-emerald-100">
+        {part}
+      </mark>
+    ) : (
+      part
+    )
+  );
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const { q } = await searchParams;
-  const query = q?.trim() ?? "";
-  const normalizedQuery = query.toLowerCase();
+  const rawQuery = q ?? "";
+  const query = normalizeText(rawQuery);
 
   const results = query
     ? getSurahs()
@@ -61,11 +54,15 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           })),
         )
         .filter(({ surah, ayah }) => {
+          const normalizedSurahName = normalizeText(surah.englishName);
+          const normalizedAyahText = ayah.text; // Arabic text
+          const normalizedTranslation = normalizeText(ayah.translation);
+          
           return (
-            surah.englishName.toLowerCase().includes(normalizedQuery) ||
+            normalizedSurahName.includes(query) ||
             surah.name.includes(query) ||
-            ayah.text.includes(query) ||
-            ayah.translation.toLowerCase().includes(normalizedQuery)
+            normalizedAyahText.includes(query) ||
+            normalizedTranslation.includes(query)
           );
         })
         .slice(0, 80)

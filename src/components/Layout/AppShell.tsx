@@ -14,6 +14,7 @@ import IconSidebar from "@/components/Sidebar/IconSidebar";
 import SurahList from "@/components/Sidebar/SurahList";
 import OthersDropdown from "@/components/Layout/OthersDropdown";
 import QuranLogo from "@/components/Layout/QuranLogo";
+import NavbarSearch from "@/components/Search/NavbarSearch";
 import ReadingSettings from "@/components/Settings/ReadingSettings";
 import ThemeToggle from "@/components/ThemeToggle";
 import { AudioProvider } from "@/components/Audio/AudioProvider";
@@ -93,21 +94,20 @@ export default function AppShell({ children, surahs }: AppShellProps) {
             )}
           </button>
 
-          <Link href="/" className="flex items-center gap-3 mr-auto lg:mr-0 lg:w-48 xl:w-64 transition-opacity hover:opacity-80">
+          <Link href="/" className="flex items-center gap-3 mr-auto lg:mr-0 lg:w-48 xl:w-64 transition-opacity hover:opacity-80 shrink-0">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/20">
               <QuranLogo className="h-6 w-6" />
             </div>
-            <div className="hidden sm:block min-w-0 flex-1">
+            <div className="hidden xl:block min-w-0 flex-1">
               <p className="truncate text-sm font-bold text-white tracking-wide">
                 Quran Reader
-              </p>
-              <p className="text-[10px] uppercase tracking-wider text-emerald-400/80 truncate">
-                Read, listen, reflect
               </p>
             </div>
           </Link>
 
-          <nav className="hidden flex-1 lg:flex items-center justify-center gap-2 xl:gap-6">
+          <NavbarSearch surahs={surahs} />
+
+          <nav className="hidden flex-1 lg:flex items-center justify-end gap-2 xl:gap-4 pr-4">
             <Link
               href="/"
               className="rounded-md px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
@@ -119,28 +119,28 @@ export default function AppShell({ children, surahs }: AppShellProps) {
               onClick={handleReadQuranClick}
               className="rounded-md px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
             >
-              Read Quran
+              Read
             </button>
             <Link
               href="/prayer-time"
               className="rounded-md px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
             >
-              Prayer Time
+              Prayer
             </Link>
             <Link
               href="/ramadan"
               className="rounded-md px-3 py-2 text-sm font-medium text-emerald-400 transition-colors hover:bg-emerald-500/10 hover:text-emerald-300"
             >
-              Ramadan 2026
+              Ramadan
             </Link>
             <OthersDropdown />
           </nav>
 
-          <div className="ml-auto flex shrink-0 gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             <ThemeToggle />
             <Link
               href="/search"
-              className="flex h-10 w-10 items-center justify-center rounded-md border border-slate-800 bg-slate-900 text-slate-100 transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              className="flex md:hidden h-10 w-10 items-center justify-center rounded-md border border-slate-800 bg-slate-900 text-slate-100 transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
               aria-label="Search surahs"
             >
               <MagnifyingGlassIcon className="h-5 w-5" aria-hidden />

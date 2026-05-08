@@ -11,10 +11,12 @@ import {
   DocumentDuplicateIcon,
   ShareIcon,
   CheckIcon,
-  HeartIcon as HeartOutlineIcon
+  HeartIcon as HeartOutlineIcon,
+  BookOpenIcon,
 } from "@heroicons/react/24/outline";
 import type { Ayah } from "@/types/quran";
 import { useAudio } from "@/components/Audio/AudioProvider";
+import TafsirModal from "@/components/Quran/TafsirModal";
 import { useLocalStorage } from "@/lib/useLocalStorage";
 import { ReadingSettingsState, DEFAULT_READING_SETTINGS } from "@/types/settings";
 import { useState } from "react";
@@ -40,6 +42,7 @@ export default function AyahCard({
   const [bookmarks, setBookmarks] = useLocalStorage<number[]>("bookmarks", []);
   const [favoriteAyahs, setFavoriteAyahs] = useLocalStorage<number[]>("favoriteAyahs", []);
   const [copyStatus, setCopyStatus] = useState<"idle" | "arabic" | "translation">("idle");
+  const [isTafsirOpen, setIsTafsirOpen] = useState(false);
 
   const isBookmarked = bookmarks.includes(ayah.number);
   const isAyahFavorite = favoriteAyahs.includes(ayah.number);
@@ -112,6 +115,8 @@ export default function AyahCard({
       arabicText: ayah.text,
     });
   };
+
+  const toggleTafsir = () => setIsTafsirOpen((prev) => !prev);
 
   return (
     <article
@@ -195,6 +200,21 @@ export default function AyahCard({
             <ShareIcon className="h-4 w-4" />
             <span className="hidden sm:inline">Share</span>
           </button>
+
+          <button
+            onClick={toggleTafsir}
+            className={`flex h-9 items-center gap-2 rounded-md px-3 text-xs font-medium transition-colors ${
+              isTafsirOpen
+                ? "bg-emerald-500/10 text-emerald-400"
+                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+            }`}
+            title="Tafsir"
+            aria-label={isTafsirOpen ? "Hide tafsir" : "Show tafsir"}
+            aria-expanded={isTafsirOpen}
+          >
+            <BookOpenIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">Tafsir</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -233,6 +253,14 @@ export default function AyahCard({
           </button>
         </div>
       </div>
+
+      <TafsirModal
+        isOpen={isTafsirOpen}
+        onClose={() => setIsTafsirOpen(false)}
+        surahNumber={surahNumber}
+        ayahNumberInSurah={ayah.numberInSurah}
+        surahName={surahName}
+      />
     </article>
   );
 }

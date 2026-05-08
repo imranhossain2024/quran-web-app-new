@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { XMarkIcon, SunIcon, MoonIcon, AdjustmentsHorizontalIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, SunIcon, MoonIcon, ComputerDesktopIcon } from "@heroicons/react/24/outline";
 import { useLocalStorage } from "@/lib/useLocalStorage";
 import { AUDIO_RECITERS } from "@/lib/audio";
 import { useAudio } from "@/components/Audio/AudioProvider";
@@ -28,7 +28,7 @@ export default function ReadingSettings({ open, onClose }: ReadingSettingsProps)
 
   useEffect(() => {
     const root = document.documentElement;
-    
+
     // Font settings
     root.style.setProperty(
       "--font-arabic",
@@ -37,8 +37,24 @@ export default function ReadingSettings({ open, onClose }: ReadingSettingsProps)
     root.style.setProperty("--size-arabic", `${settings.arabicSize}px`);
     root.style.setProperty("--size-translation", `${settings.translationSize}px`);
     root.style.setProperty("--arabic-line-height", `${settings.lineHeight}`);
-    
-    // Theme setting
+
+    // Theme setting (system follows OS preference)
+    if (settings.theme === "system") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const applySystemTheme = () => {
+        root.setAttribute("data-theme", mediaQuery.matches ? "dark" : "light");
+      };
+
+      applySystemTheme();
+      mediaQuery.addEventListener("change", applySystemTheme);
+      return () => mediaQuery.removeEventListener("change", applySystemTheme);
+    }
+
+    if (settings.theme === "sepia") {
+      root.setAttribute("data-theme", "sepia");
+      return;
+    }
+
     root.setAttribute("data-theme", settings.theme);
   }, [settings]);
 
@@ -109,7 +125,7 @@ export default function ReadingSettings({ open, onClose }: ReadingSettingsProps)
           <section className="space-y-4">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500">Appearance</h3>
             <div className="grid grid-cols-3 gap-3">
-              {(["light", "dark", "sepia"] as const).map((theme) => (
+              {(["light", "dark", "system"] as const).map((theme) => (
                 <button
                   key={theme}
                   onClick={() => updateSetting("theme", theme)}
@@ -121,7 +137,7 @@ export default function ReadingSettings({ open, onClose }: ReadingSettingsProps)
                 >
                   {theme === "light" && <SunIcon className="h-5 w-5" />}
                   {theme === "dark" && <MoonIcon className="h-5 w-5" />}
-                  {theme === "sepia" && <AdjustmentsHorizontalIcon className="h-5 w-5" />}
+                  {theme === "system" && <ComputerDesktopIcon className="h-5 w-5" />}
                   <span className="text-xs font-medium capitalize">{theme}</span>
                 </button>
               ))}
