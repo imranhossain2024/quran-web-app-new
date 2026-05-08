@@ -1,5 +1,5 @@
 export default function Default() {
     return (
-        <div>Default</div>
+        <div>Default new</div>
     )
 }
