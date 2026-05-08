@@ -3,6 +3,8 @@
 import { PauseIcon, PlayIcon } from "@heroicons/react/24/solid";
 import type { Ayah } from "@/types/quran";
 import { useAudio } from "@/components/Audio/AudioProvider";
+import LetterMarker from "@/components/Quran/LetterMarker";
+import { getAyahAudioUrl } from "@/lib/audio";
 
 interface AyahCardProps {
   ayah: Ayah;
@@ -17,7 +19,7 @@ export default function AyahCard({
   surahName,
   surahAyahCount,
 }: AyahCardProps) {
-  const { currentAyah, status, playAyah, pause, resume } = useAudio();
+  const { currentAyah, status, playAyah, pause, resume, audioRef } = useAudio();
   const isActive = currentAyah?.ayahNumber === ayah.number;
   const isPlaying = isActive && status === "playing";
   const isLoading = isActive && status === "loading";
@@ -39,6 +41,7 @@ export default function AyahCard({
       surahAyahCount,
       surahNumber,
       surahName,
+      arabicText: ayah.text,
     });
   };
 
@@ -69,16 +72,22 @@ export default function AyahCard({
         </button>
       </div>
       <div className="mt-5 grid gap-4 md:grid-cols-12 md:items-start">
-        <p
+        <div
           className={`${ayah.translation ? "md:col-span-8" : "md:col-span-12"} arabic-text min-w-0 text-right leading-loose text-slate-50`}
           dir="rtl"
           lang="ar"
         >
-          {ayah.text}
+          <LetterMarker
+            ayahNumber={ayah.number}
+            arabicText={ayah.text}
+            audioUrl={getAyahAudioUrl(ayah.number, currentAyah?.reciterId || "ar.alafasy")}
+            audioRef={audioRef}
+            isActive={isActive}
+          />
           <span className="mr-3 inline-flex h-8 min-w-8 items-center justify-center rounded-full border border-emerald-500/40 px-2 align-middle text-sm leading-none text-emerald-300">
             {ayah.numberInSurah}
           </span>
-        </p>
+        </div>
         {ayah.translation ? (
           <p className="translation-text text-left leading-7 text-slate-300 md:col-span-4">
             {ayah.translation}

@@ -1,22 +1,36 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Hook to persist a value in localStorage.
  * Returns [value, setValue] where setValue updates both state and storage.
+ * 
+ * Note: To prevent hydration mismatches between SSR and client, this hook
+ * returns the initialValue until the component is mounted on the client side.
+ * After mounting, it reads from localStorage and updates the value.
  */
 export function useLocalStorage<T>(key: string, initialValue: T) {
-  const [storedValue, setStoredValue] = useState<T>(() => {
-    if (typeof window === 'undefined') {
-      return initialValue;
-    }
+  // Always use initialValue during SSR and initial client render
+  const [storedValue, setStoredValue] = useState<T>(initialValue);
+
+  // After mount, read from localStorage (client-side only)
+  // This effect runs once on mount to hydrate the state from localStorage,
+  // ensuring SSR and initial client render are consistent (both use initialValue)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     try {
       const item = window.localStorage.getItem(key);
-      return item ? (JSON.parse(item) as T) : initialValue;
+      if (item) {
+        // Intentionally updating state here to sync with localStorage after initial render.
+        // This is a valid use case - we need to read external storage after mount
+        // to avoid hydration mismatches between server (no localStorage) and client.
+        // eslint-disable-next-line
+        setStoredValue(JSON.parse(item) as T);
+      }
     } catch (error) {
       console.warn("useLocalStorage: error reading key", key, error);
-      return initialValue;
     }
-  });
+  }, []); // Only run on mount, not on every key change
 
   const setValue = (value: T | ((val: T) => T)) => {
     try {

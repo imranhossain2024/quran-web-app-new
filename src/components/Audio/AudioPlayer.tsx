@@ -1,21 +1,21 @@
 "use client";
 
 import { useMemo } from "react";
+import { useEffect } from "react";
 import {
   Loader2,
   Pause,
   Play,
-  Repeat,
   Rewind,
   FastForward,
   SkipBack,
   SkipForward,
   Volume2,
   VolumeX,
+  X,
 } from "lucide-react";
 import { useAudio } from "@/components/Audio/AudioProvider";
 
-const SPEED_OPTIONS = [0.75, 1, 1.25, 1.5] as const;
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds <= 0) {
@@ -41,8 +41,6 @@ export default function AudioPlayer() {
     duration,
     volume,
     isMuted,
-    playbackRate,
-    isRepeat,
     canPlayNext,
     canPlayPrevious,
     pause,
@@ -52,15 +50,81 @@ export default function AudioPlayer() {
     seek,
     setVolume,
     toggleMute,
-    setPlaybackRate,
-    toggleRepeat,
+    stop,
     setAutoPlayNext,
     rewind,
     fastForward,
+    increaseVolume,
+    decreaseVolume,
+    audioRef,
   } = useAudio();
 
   const isPlaying = status === "playing";
   const isLoading = status === "loading";
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Don't handle shortcuts when typing in input fields
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      switch (event.code) {
+        case "Space":
+          event.preventDefault();
+          if (isPlaying) {
+            pause();
+          } else {
+            resume();
+          }
+          break;
+        case "ArrowRight":
+          event.preventDefault();
+          playNextAyah();
+          break;
+        case "ArrowLeft":
+          event.preventDefault();
+          playPreviousAyah();
+          break;
+        case "ArrowUp":
+          event.preventDefault();
+          increaseVolume(0.1);
+          break;
+        case "ArrowDown":
+          event.preventDefault();
+          decreaseVolume(0.1);
+          break;
+        case "KeyM":
+          event.preventDefault();
+          toggleMute();
+          break;
+        case "KeyN":
+          event.preventDefault();
+          setAutoPlayNext(!autoPlayNext);
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    isPlaying,
+    pause,
+    resume,
+    playNextAyah,
+    playPreviousAyah,
+    increaseVolume,
+    decreaseVolume,
+    toggleMute,
+    setAutoPlayNext,
+    autoPlayNext,
+  ]);
 
   const progressPercent = useMemo(() => {
     if (!duration || !Number.isFinite(currentTime)) {
@@ -77,51 +141,14 @@ export default function AudioPlayer() {
   return (
     <section className="fixed inset-x-0 bottom-0 z-50 px-3 pb-3 sm:px-5 lg:left-96 lg:px-8">
       <div className="mx-auto max-w-6xl overflow-hidden rounded-t-3xl border border-[#c9a84c]/20 bg-[#08151d]/95 text-slate-100 shadow-[0_0_80px_rgba(20,37,56,0.35)] backdrop-blur-xl">
-        <div className="border-b border-[#c9a84c]/15 px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0 space-y-1">
-              <p className="truncate text-sm uppercase tracking-[0.25em] text-amber-300/90">
-                Quran recitation
-              </p>
-              <p className="truncate text-lg font-semibold text-white sm:text-xl">
-                {currentAyah.surahName} • Ayah {currentAyah.numberInSurah}
-              </p>
-              <p className="truncate text-sm text-slate-300">
-                {`Reciter: ${reciterId} · ${isLoading ? "Loading..." : status === "error" ? errorMessage : isPlaying ? "Playing" : "Paused"}`}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setAutoPlayNext(!autoPlayNext)}
-                className={`rounded-full border px-3 py-2 text-sm transition-all ${
-                  autoPlayNext
-                    ? "border-amber-400 bg-amber-400/10 text-amber-200 shadow-[0_0_0_1px_rgba(201,168,76,0.4)]"
-                    : "border-slate-700 bg-slate-950/80 text-slate-300 hover:border-slate-500"
-                }`}
-                aria-pressed={autoPlayNext}
-                aria-label="Toggle auto play next ayah"
-              >
-                Auto-next
-              </button>
-              <button
-                type="button"
-                onClick={toggleRepeat}
-                className={`rounded-full border px-3 py-2 text-sm transition-all ${
-                  isRepeat
-                    ? "border-amber-400 bg-amber-400/10 text-amber-200 shadow-[0_0_0_1px_rgba(201,168,76,0.4)]"
-                    : "border-slate-700 bg-slate-950/80 text-slate-300 hover:border-slate-500"
-                }`}
-                aria-pressed={isRepeat}
-                aria-label="Toggle repeat mode"
-              >
-                Repeat
-              </button>
-            </div>
-          </div>
-        </div>
-
+        <button
+          type="button"
+          onClick={stop}
+          className="absolute right-4 top-4 z-10 rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+          aria-label="Close audio player"
+        >
+          <X className="h-4 w-4" />
+        </button>
         <div className="px-4 py-4 sm:px-6 lg:px-8">
           <div className="space-y-3">
             <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-400">
@@ -147,7 +174,7 @@ export default function AudioPlayer() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 text-slate-100 sm:grid-cols-[auto_1fr] lg:grid-cols-[auto_1.5fr_1fr] lg:items-center">
+          <div className="mt-4 grid gap-3 text-slate-100 sm:grid-cols-[auto_1fr] lg:grid-cols-[auto_1fr] lg:items-center">
             <div className="order-2 flex items-center justify-between gap-2 sm:order-1 sm:justify-start">
               <button
                 type="button"
@@ -199,23 +226,38 @@ export default function AudioPlayer() {
               </button>
             </div>
 
-            <div className="order-1 sm:order-2 lg:order-3">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                <div className="grid grid-cols-[auto_1fr] gap-3 rounded-3xl bg-slate-950/90 p-3 ring-1 ring-slate-800">
+            <div className="order-1 sm:order-2 lg:order-3 lg:max-w-md">
+              <div className="flex items-center gap-3 rounded-3xl bg-slate-950/90 p-2 pl-4 ring-1 ring-slate-800">
+                <div className="hidden min-w-0 flex-1 md:block">
+                  <p className="truncate text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300/60">
+                    {currentAyah.surahName} • Ayah {currentAyah.numberInSurah}
+                  </p>
+                  <p className="truncate text-[11px] text-slate-400">
+                    {isLoading
+                      ? "Loading..."
+                      : status === "error"
+                        ? errorMessage
+                        : isPlaying
+                          ? "Playing"
+                          : "Paused"}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-2xl bg-slate-900/50 p-1.5 pr-4">
                   <button
                     type="button"
                     onClick={toggleMute}
-                    className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 text-slate-100 transition hover:border-amber-400"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 text-slate-100 transition hover:border-amber-400"
                     aria-label={isMuted ? "Unmute audio" : "Mute audio"}
                     aria-pressed={isMuted}
                   >
                     {isMuted || volume === 0 ? (
-                      <VolumeX className="h-5 w-5" aria-hidden />
+                      <VolumeX className="h-4 w-4" aria-hidden />
                     ) : (
-                      <Volume2 className="h-5 w-5" aria-hidden />
+                      <Volume2 className="h-4 w-4" aria-hidden />
                     )}
                   </button>
-                  <div className="space-y-2">
+                  <div className="w-24 space-y-1 sm:w-32">
                     <label className="sr-only" htmlFor="volume-range">
                       Audio volume
                     </label>
@@ -229,38 +271,11 @@ export default function AudioPlayer() {
                       onChange={(event) =>
                         setVolume(Number(event.target.value))
                       }
-                      className="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-800 accent-amber-400"
+                      className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-800 accent-amber-400"
                       aria-valuemin={0}
                       aria-valuemax={1}
                       aria-valuenow={isMuted ? 0 : volume}
                     />
-                    <p className="text-xs text-slate-400">
-                      Volume {Math.round((isMuted ? 0 : volume) * 100)}%
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-3xl bg-slate-950/90 p-3 ring-1 ring-slate-800">
-                  <p className="mb-2 text-xs uppercase tracking-[0.25em] text-slate-500">
-                    Speed
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {SPEED_OPTIONS.map((rate) => (
-                      <button
-                        key={rate}
-                        type="button"
-                        onClick={() => setPlaybackRate(rate)}
-                        className={`rounded-full px-3 py-2 text-sm transition ${
-                          playbackRate === rate
-                            ? "bg-amber-400 text-slate-950"
-                            : "border border-slate-700 bg-slate-900 text-slate-300 hover:border-amber-400"
-                        }`}
-                        aria-pressed={playbackRate === rate}
-                        aria-label={`Set playback speed to ${rate}x`}
-                      >
-                        {rate}x
-                      </button>
-                    ))}
                   </div>
                 </div>
               </div>
