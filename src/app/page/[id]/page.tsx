@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import AyahCard from "@/components/Quran/AyahCard";
+import PageJumper from "@/components/Quran/PageJumper";
+import PageQuickActions from "@/components/Quran/PageQuickActions";
 import { getAyahsByPage } from "@/lib/quran";
 
 interface PagePageProps {
@@ -59,6 +61,7 @@ export default async function PagePage({ params }: PagePageProps) {
           ))}
         </div>
       </header>
+      <PageJumper currentPage={numericId} sticky />
 
       <div className="pb-12">
         {pageAyahs.map((item: any) => (
@@ -103,6 +106,7 @@ export default async function PagePage({ params }: PagePageProps) {
           </Link>
         ) : null}
       </nav>
+      <PageQuickActions currentPage={numericId} />
     </section>
   );
 }

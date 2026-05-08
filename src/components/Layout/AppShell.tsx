@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Bars3Icon,
   Cog6ToothIcon,
@@ -14,6 +15,7 @@ import SurahList from "@/components/Sidebar/SurahList";
 import OthersDropdown from "@/components/Layout/OthersDropdown";
 import QuranLogo from "@/components/Layout/QuranLogo";
 import ReadingSettings from "@/components/Settings/ReadingSettings";
+import ThemeToggle from "@/components/ThemeToggle";
 import { AudioProvider } from "@/components/Audio/AudioProvider";
 import AudioPlayer from "@/components/Audio/AudioPlayer";
 import { useLocalStorage } from "@/lib/useLocalStorage";
@@ -25,10 +27,20 @@ interface AppShellProps {
 }
 
 export default function AppShell({ children, surahs }: AppShellProps) {
+  const router = useRouter();
   const [isSurahMenuOpen, setIsSurahMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useLocalStorage("sidebarCollapsed", false);
   const [isMounted, setIsMounted] = useState(false);
+
+  const handleReadQuranClick = () => {
+    // Expand the left sidebar on desktop
+    setIsSidebarCollapsed(false);
+    // Open the mobile sidebar menu on small screens
+    setIsSurahMenuOpen(true);
+    // Navigate to first surah
+    router.push("/surah/1");
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -102,12 +114,13 @@ export default function AppShell({ children, surahs }: AppShellProps) {
             >
               Home
             </Link>
-            <Link
-              href="/surah/1"
+            <button
+              type="button"
+              onClick={handleReadQuranClick}
               className="rounded-md px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
             >
               Read Quran
-            </Link>
+            </button>
             <Link
               href="/prayer-time"
               className="rounded-md px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
@@ -124,6 +137,7 @@ export default function AppShell({ children, surahs }: AppShellProps) {
           </nav>
 
           <div className="ml-auto flex shrink-0 gap-2">
+            <ThemeToggle />
             <Link
               href="/search"
               className="flex h-10 w-10 items-center justify-center rounded-md border border-slate-800 bg-slate-900 text-slate-100 transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"

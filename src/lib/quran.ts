@@ -136,6 +136,28 @@ export function getAyahsByPage(pageNumber: number) {
   return ayahs;
 }
 
+export function getPageForAyah(surahNumber: number, numberInSurah: number) {
+  if (surahNumber < 1 || surahNumber > 114 || numberInSurah < 1) {
+    return null;
+  }
+
+  const targetGlobal = getGlobalAyahNumber(surahNumber, numberInSurah);
+  let matchedPage = 1;
+
+  for (let index = 0; index < quranMetadata.pages.length; index += 1) {
+    const pageRef = quranMetadata.pages[index];
+    const pageStartGlobal = getGlobalAyahNumber(pageRef.surah, pageRef.ayah);
+
+    if (pageStartGlobal > targetGlobal) {
+      break;
+    }
+
+    matchedPage = index + 1;
+  }
+
+  return matchedPage;
+}
+
 export function getAyahsByJuz(juzNumber: number) {
   if (juzNumber < 1 || juzNumber > 30) return [];
   const startRef = quranMetadata.juzs[juzNumber - 1];

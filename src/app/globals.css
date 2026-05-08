@@ -6,6 +6,8 @@
   --foreground: #f8fafc;
   --sidebar-bg: #0f172a;
   --sidebar-text: #f1f5f9;
+  --border: #1e293b;
+  --surface: #0f172a;
   --font-arabic: 'KFGQ PC Sans Bold', 'Amiri', 'Scheherazade', serif;
   --size-arabic: 32px;
   --size-translation: 16px;
@@ -15,10 +17,12 @@
 }
 
 [data-theme="light"] {
-  --background: #ffffff;
-  --foreground: #0f172a;
-  --sidebar-bg: #f8fafc;
-  --sidebar-text: #0f172a;
+  --background: #f0f9ff;
+  --foreground: #0a0f20;
+  --sidebar-bg: #e6f7ff;
+  --sidebar-text: #0a0f20;
+  --border: #bae6fd;
+  --surface: #ffffff;
 }
 
 [data-theme="sepia"] {
@@ -26,6 +30,8 @@
   --foreground: #5b4636;
   --sidebar-bg: #efdfbb;
   --sidebar-text: #5b4636;
+  --border: #d4c5a0;
+  --surface: #fdfbf7;
 }
 
 body {

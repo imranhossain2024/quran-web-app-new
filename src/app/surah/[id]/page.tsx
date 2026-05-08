@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import SurahHeader from "@/components/Quran/SurahHeader";
 import AyahCard from "@/components/Quran/AyahCard";
-import { getAdjacentSurahs, getSurah } from "@/lib/quran";
+import PageJumper from "@/components/Quran/PageJumper";
+import { getAdjacentSurahs, getPageForAyah, getSurah } from "@/lib/quran";
 import type { Surah } from "@/types/quran";
 
 export async function generateStaticParams() {
@@ -37,10 +38,12 @@ export default async function SurahPage({ params }: SurahPageProps) {
 
   const surah: Surah = getSurah(numericId);
   const adjacentSurahs = getAdjacentSurahs(surah.number);
+  const currentPage = getPageForAyah(surah.number, 1) ?? 1;
 
   return (
     <section className="mx-auto w-full min-w-0 max-w-4xl">
       <SurahHeader surah={surah} />
+      <PageJumper currentPage={currentPage} sticky />
       {surah.number !== 1 && surah.number !== 9 && (
         <div className="my-5 rounded-md border border-slate-800 bg-slate-900/50 px-5 py-6 text-center">
           <p className="font-arabic text-3xl leading-loose text-emerald-100 sm:text-4xl" dir="rtl" lang="ar">
