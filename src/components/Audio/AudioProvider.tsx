@@ -80,10 +80,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const currentAyahRef = useRef<CurrentAyah | null>(null);
   const autoPlayNextRef = useRef(defaultSettings.autoPlayNext);
   const lastVolumeRef = useRef(0.8);
-  const [settings, setSettings] = useLocalStorage<AudioSettings>(
+  const [rawSettings, setSettings] = useLocalStorage<AudioSettings>(
     "audioSettings",
     defaultSettings,
   );
+  const settings = { ...defaultSettings, ...rawSettings };
   const [currentAyah, setCurrentAyah] = useState<CurrentAyah | null>(null);
   const [status, setStatus] = useState<AudioStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

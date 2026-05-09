@@ -18,7 +18,7 @@ export default function RootLayout({
   const surahs = getSurahSummaries();
 
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased" data-scroll-behavior="smooth">
       <body className="min-h-full bg-slate-950 text-slate-100">
         <ScrollToTop />
         <AppShell surahs={surahs}>{children}</AppShell>

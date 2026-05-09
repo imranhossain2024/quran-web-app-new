@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -35,6 +35,8 @@ export default function AppShell({ children, surahs }: AppShellProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useLocalStorage("sidebarCollapsed", false);
   const [isMounted, setIsMounted] = useState(false);
+  const [showHeader, setShowHeader] = useState(true);
+  const lastScrollY = useRef(0);
 
   const handleReadQuranClick = () => {
     // Expand the left sidebar on desktop
@@ -47,6 +49,40 @@ export default function AppShell({ children, surahs }: AppShellProps) {
 
   useEffect(() => {
     setIsMounted(true);
+    lastScrollY.current = window.scrollY;
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
+      const delta = currentScrollY - lastScrollY.current;
+
+      // Reveal instantly on ANY upward movement
+      if (delta < 0 || currentScrollY <= 10) {
+        setShowHeader(true);
+      } 
+      // Hide on ANY downward movement (after initial top zone)
+      else if (delta > 0 && currentScrollY > 100) {
+        setShowHeader(false);
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Reveal navbar if mouse is near the top (within 50px)
+      if (e.clientY < 50) {
+        setShowHeader(true);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("mousemove", handleMouseMove);
+    
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
   }, []);
 
   useEffect(() => {
@@ -70,7 +106,9 @@ export default function AppShell({ children, surahs }: AppShellProps) {
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
 
-      <header className={`sticky top-0 z-30 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur transition-all duration-300 ${
+      <header className={`sticky top-0 z-30 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur transition-all duration-200 ${
+        showHeader ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
+      } ${
         isSidebarCollapsed ? "lg:pl-16" : "lg:pl-96"
       }`}>
         <div className="flex min-w-0 items-center gap-3">

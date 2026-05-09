@@ -1,5 +1,6 @@
-@config "../../tailwind.config.ts";
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@300;400;500;600;700;800&family=Scheherazade+New:wght@400;700&display=swap');
 @import "tailwindcss";
+@config "../../tailwind.config.ts";
 
 :root {
   --background: #020617;
@@ -15,46 +16,51 @@
   --sidebar-width: 20rem;
   --arabic-line-height: 1.8;
   --audio-player-offset: 0px;
+  --accent: #10b981;
+  --accent-muted: rgba(16, 185, 129, 0.15);
 }
 
 [data-theme="light"] {
-  --background: #f0f9ff;
-  --foreground: #0a0f20;
-  --sidebar-bg: #e6f7ff;
-  --sidebar-text: #0a0f20;
-  --border: #bae6fd;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --sidebar-bg: #f1f5f9;
+  --sidebar-text: #1e293b;
+  --border: #e2e8f0;
   --surface: #ffffff;
+  --accent: #059669;
+  --accent-muted: rgba(5, 150, 105, 0.1);
 }
 
 [data-theme="sepia"] {
-  --background: #f4ecd8;
+  --background: #fdf6e3;
   --foreground: #5b4636;
-  --sidebar-bg: #efdfbb;
-  --sidebar-text: #5b4636;
+  --sidebar-bg: #eee8d5;
+  --sidebar-text: #657b83;
   --border: #d4c5a0;
   --surface: #fdfbf7;
+  --accent: #b58900;
+  --accent-muted: rgba(181, 137, 0, 0.1);
 }
 
 html {
-  overflow-y: auto;
-  overflow-x: hidden;
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  overflow-x: hidden;
-  overflow-y: auto;
+  font-family: 'Inter', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 * {
-  scrollbar-color: #334155 #020617;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(16, 185, 129, 0.3) transparent;
 }
 
 ::selection {
-  background: rgba(16, 185, 129, 0.35);
-  color: #ffffff;
+  background: var(--accent-muted);
+  color: var(--accent);
 }
 
 .arabic-text {
@@ -68,6 +74,46 @@ body {
 
 .translation-text {
   font-size: var(--size-translation);
+}
+
+/* Premium Slider Styles */
+.slider-premium {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.slider-premium::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--accent);
+  border: 3px solid var(--background);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  transition: all 0.2s;
+}
+
+.slider-premium::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+}
+
+.slider-premium::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--accent);
+  border: 3px solid var(--background);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  transition: all 0.2s;
 }
 
 /* Tafsir Modal content styling — respects light/sepia/dark themes */
@@ -97,16 +143,19 @@ body {
 }
 
 .tafsir-content a {
-  color: #14b8a6;
+  color: var(--accent);
 }
 
 .tafsir-content a:hover {
-  color: #0d9488;
+  opacity: 0.8;
   text-decoration: underline;
 }
 
 .tafsir-content blockquote {
   color: var(--foreground);
-  border-left-color: var(--border);
-  opacity: 0.85;
+  border-left: 4px solid var(--accent);
+  background: var(--accent-muted);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  font-style: italic;
 }

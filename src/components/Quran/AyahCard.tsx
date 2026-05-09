@@ -35,10 +35,11 @@ export default function AyahCard({
   surahAyahCount,
 }: AyahCardProps) {
   const { currentAyah, status, playAyah, pause, resume } = useAudio();
-  const [settings] = useLocalStorage<ReadingSettingsState>(
+  const [rawSettings] = useLocalStorage<ReadingSettingsState>(
     "readingSettings",
     DEFAULT_READING_SETTINGS,
   );
+  const settings = { ...DEFAULT_READING_SETTINGS, ...rawSettings };
   const [bookmarks, setBookmarks] = useLocalStorage<number[]>("bookmarks", []);
   const [favoriteAyahs, setFavoriteAyahs] = useLocalStorage<number[]>("favoriteAyahs", []);
   const [copyStatus, setCopyStatus] = useState<"idle" | "arabic" | "translation">("idle");
@@ -121,109 +122,134 @@ export default function AyahCard({
   return (
     <article
       id={`ayah-${ayah.numberInSurah}`}
-      className="scroll-mt-24 my-4 min-w-0 overflow-hidden rounded-md border border-slate-800 bg-slate-900/70 p-4 shadow-sm shadow-slate-950/30 transition-colors hover:border-slate-700 sm:p-5"
+      className={`scroll-mt-24 my-6 min-w-0 overflow-hidden rounded-2xl border transition-all duration-500 ${
+        isActive && settings.highlightCurrentAyah
+          ? "border-emerald-500/50 bg-emerald-500/5 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-500/20"
+          : "border-slate-800/50 bg-slate-900/40 hover:border-slate-700/50"
+      } p-5 sm:p-6`}
     >
       <div className="flex items-center justify-between">
-        <span className="flex h-9 min-w-9 items-center justify-center rounded-md bg-slate-950 px-3 text-sm font-semibold text-emerald-400">
-          Ayah {ayah.numberInSurah}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className={`flex h-10 min-w-10 items-center justify-center rounded-xl font-bold transition-colors ${
+            isActive ? "bg-emerald-500 text-slate-950" : "bg-slate-950 text-emerald-400 border border-slate-800"
+          } text-sm`}>
+            {ayah.numberInSurah}
+          </span>
+          <div className="hidden sm:block">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Ayah</p>
+            <p className="text-xs font-bold text-slate-400">{surahName} {surahNumber}:{ayah.numberInSurah}</p>
+          </div>
+        </div>
+
         <button
           type="button"
           onClick={togglePlay}
-          className={`flex h-10 w-10 items-center justify-center rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
+          className={`flex h-12 w-12 items-center justify-center rounded-xl transition-all duration-300 active:scale-95 ${
             isPlaying
-              ? "bg-emerald-500 text-slate-950"
-              : "bg-slate-800 text-slate-200 hover:bg-slate-700"
+              ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/30"
+              : "bg-slate-800/80 text-slate-200 hover:bg-slate-700 hover:text-white"
           }`}
           aria-label={isPlaying ? "Pause ayah audio" : "Play ayah audio"}
         >
           {isPlaying || isLoading ? (
-            <PauseIcon className="h-5 w-5" aria-hidden />
+            <PauseIcon className="h-6 w-6" aria-hidden />
           ) : (
-            <PlayIcon className="h-5 w-5" aria-hidden />
+            <PlayIcon className="h-6 w-6" aria-hidden />
           )}
         </button>
       </div>
-      <div className="mt-5 flex flex-col gap-4">
+
+      <div className="mt-8 flex flex-col gap-6">
         <p
-          className="arabic-text min-w-0 text-right leading-loose text-slate-50"
+          className={`arabic-text min-w-0 transition-colors duration-500 ${
+            isActive ? "text-emerald-50" : "text-slate-50"
+          }`}
           dir="rtl"
           lang="ar"
         >
           {ayah.text}
-          <span className="mr-3 inline-flex h-8 min-w-8 items-center justify-center rounded-full border border-emerald-500/40 px-2 align-middle text-sm leading-none text-emerald-300">
-            {ayah.numberInSurah}
-          </span>
+          {settings.showAyahNumbers && (
+            <span className={`mr-4 inline-flex h-10 min-w-10 items-center justify-center rounded-full border align-middle text-sm transition-all duration-500 ${
+              isActive 
+                ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-300" 
+                : "border-slate-700 bg-slate-800/50 text-slate-400"
+            }`}>
+              {ayah.numberInSurah}
+            </span>
+          )}
         </p>
-        {ayah.translation && !settings.readingMode && settings.showTranslation ? (
-          <p className="translation-text text-left leading-7 text-slate-300">
+
+        {ayah.translation && !settings.readingMode && settings.showTranslation && (
+          <p className={`translation-text text-left leading-relaxed transition-colors duration-500 ${
+            isActive ? "text-slate-100" : "text-slate-400"
+          }`}>
             {ayah.translation}
           </p>
-        ) : null}
+        )}
       </div>
 
-      <div className="mt-6 flex items-center justify-between border-t border-slate-800/50 pt-4">
-        <div className="flex items-center gap-1">
+      <div className="mt-8 flex items-center justify-between border-t border-slate-800/30 pt-6">
+        <div className="flex items-center gap-1 sm:gap-2">
           <button
             onClick={() => copyToClipboard(ayah.text, "arabic")}
-            className="flex h-9 items-center gap-2 rounded-md px-3 text-xs font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            className="group flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold text-slate-500 transition-all hover:bg-slate-800 hover:text-slate-200"
             title="Copy Arabic"
           >
             {copyStatus === "arabic" ? (
               <CheckIcon className="h-4 w-4 text-emerald-400" />
             ) : (
-              <DocumentDuplicateIcon className="h-4 w-4" />
+              <DocumentDuplicateIcon className="h-4 w-4 transition-transform group-hover:scale-110" />
             )}
-            <span className="hidden sm:inline">Arabic</span>
+            <span className="hidden md:inline uppercase tracking-widest">Arabic</span>
           </button>
           
           {ayah.translation && (
             <button
               onClick={() => copyToClipboard(ayah.translation, "translation")}
-              className="flex h-9 items-center gap-2 rounded-md px-3 text-xs font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+              className="group flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold text-slate-500 transition-all hover:bg-slate-800 hover:text-slate-200"
               title="Copy Translation"
             >
               {copyStatus === "translation" ? (
                 <CheckIcon className="h-4 w-4 text-emerald-400" />
               ) : (
-                <DocumentDuplicateIcon className="h-4 w-4" />
+                <DocumentDuplicateIcon className="h-4 w-4 transition-transform group-hover:scale-110" />
               )}
-              <span className="hidden sm:inline">Translation</span>
+              <span className="hidden md:inline uppercase tracking-widest">Translation</span>
             </button>
           )}
 
           <button
             onClick={shareAyah}
-            className="flex h-9 items-center gap-2 rounded-md px-3 text-xs font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            className="group flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold text-slate-500 transition-all hover:bg-slate-800 hover:text-slate-200"
             title="Share"
           >
-            <ShareIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">Share</span>
+            <ShareIcon className="h-4 w-4 transition-transform group-hover:scale-110" />
+            <span className="hidden md:inline uppercase tracking-widest">Share</span>
           </button>
 
           <button
             onClick={toggleTafsir}
-            className={`flex h-9 items-center gap-2 rounded-md px-3 text-xs font-medium transition-colors ${
+            className={`group flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold transition-all ${
               isTafsirOpen
-                ? "bg-emerald-500/10 text-emerald-400"
-                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                : "text-slate-500 hover:bg-slate-800 hover:text-slate-200"
             }`}
             title="Tafsir"
             aria-label={isTafsirOpen ? "Hide tafsir" : "Show tafsir"}
             aria-expanded={isTafsirOpen}
           >
-            <BookOpenIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">Tafsir</span>
+            <BookOpenIcon className={`h-4 w-4 transition-transform ${isTafsirOpen ? 'scale-110' : 'group-hover:scale-110'}`} />
+            <span className="hidden md:inline uppercase tracking-widest">Tafsir</span>
           </button>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={toggleFavoriteAyah}
-            className={`flex h-9 w-9 items-center justify-center rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
+            className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 active:scale-95 ${
               isAyahFavorite
-                ? "bg-rose-500/10 text-rose-500 hover:bg-rose-500/20"
-                : "text-slate-400 hover:bg-slate-800 hover:text-rose-400"
+                ? "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                : "bg-slate-900/50 text-slate-500 border border-slate-800 hover:border-rose-500/30 hover:text-rose-400"
             }`}
             title={isAyahFavorite ? "Remove Favorite" : "Favorite"}
             aria-label={isAyahFavorite ? "Remove Favorite" : "Favorite"}
@@ -237,19 +263,19 @@ export default function AyahCard({
 
           <button
             onClick={toggleBookmark}
-            className={`flex h-9 items-center gap-2 rounded-md px-4 text-xs font-bold transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
+            className={`group flex h-10 items-center gap-2 rounded-xl px-4 text-xs font-bold transition-all duration-300 active:scale-95 ${
               isBookmarked
-                ? "bg-emerald-500/10 text-emerald-400"
-                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                : "bg-slate-900/50 text-slate-500 border border-slate-800 hover:border-emerald-500/30 hover:text-emerald-400"
             }`}
             title={isBookmarked ? "Remove Bookmark" : "Add Bookmark"}
           >
             {isBookmarked ? (
               <BookmarkSolidIcon className="h-5 w-5" />
             ) : (
-              <BookmarkOutlineIcon className="h-5 w-5" />
+              <BookmarkOutlineIcon className="h-5 w-5 transition-transform group-hover:scale-110" />
             )}
-            <span className="hidden sm:inline">{isBookmarked ? "Saved" : "Save"}</span>
+            <span className="hidden sm:inline uppercase tracking-widest">{isBookmarked ? "Saved" : "Save"}</span>
           </button>
         </div>
       </div>
