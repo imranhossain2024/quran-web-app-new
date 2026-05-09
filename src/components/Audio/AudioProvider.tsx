@@ -217,6 +217,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       // Capture gesture context as early as possible
       // First, set the source and immediately call play
       audio.src = audioUrl;
+      // Some browsers require load() to recognize the new src within the gesture
+      audio.load(); 
       
       const playPromise = audio.play();
       
@@ -235,13 +237,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       
       if (playPromise !== undefined) {
         playPromise.catch((error) => {
-          console.error("Playback failed:", error);
-          // If it fails, update status to error
+          console.error("Playback failed details:", error);
           setStatus("error");
           if (error.name === "NotAllowedError") {
-            setErrorMessage("Browser blocked playback. Tap play again.");
+            setErrorMessage("Browser blocked playback. Please click/tap again to allow.");
           } else {
-            setErrorMessage(`Playback error: ${error.message || "Unknown error"}. Tap play again.`);
+            setErrorMessage(`Playback error: ${error.name} - ${error.message || "Unknown error"}. Tap play again.`);
           }
         });
       }
@@ -487,6 +488,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       <audio
         ref={audioRef}
         preload="metadata"
+        crossOrigin="anonymous"
         style={{ display: "none" }}
         aria-hidden="true"
       />
