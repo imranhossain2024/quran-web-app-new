@@ -296,7 +296,6 @@ export default function AudioPlayerCard({
 
     // নতুন অডিও URL সেট করুন
     audio.src = audioUrl;
-    audio.load();
     
     // স্টেট রিসেট
     setCurrentTime(0);
@@ -332,10 +331,18 @@ export default function AudioPlayerCard({
       audio.pause();
     } else {
       setIsLoading(true);
-      audio.play().catch(() => {
-        setIsLoading(false);
-        setErrorMessage("Browser blocked playback. Please try again.");
-      });
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.error("Playback failed:", error);
+          setIsLoading(false);
+          if (error.name === "NotAllowedError") {
+            setErrorMessage("Browser blocked playback. Please try again.");
+          } else {
+            setErrorMessage(`Playback error: ${error.message || "Unknown error"}. Please try again.`);
+          }
+        });
+      }
     }
   }, [isPlaying]);
 

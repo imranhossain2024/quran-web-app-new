@@ -105,6 +105,17 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const audio = audioRef.current;
     if (!audio) return;
 
+    // Global "unlock" for mobile/strict browsers
+    const unlock = () => {
+      if (audio && audio.paused && !audio.src) {
+        audio.play().then(() => audio.pause()).catch(() => {});
+      }
+      window.removeEventListener("click", unlock);
+      window.removeEventListener("touchstart", unlock);
+    };
+    window.addEventListener("click", unlock);
+    window.addEventListener("touchstart", unlock);
+
     const handleWaiting = () => setStatus("loading");
     const handlePlaying = () => {
       setStatus("playing");
@@ -115,7 +126,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setStatus("paused");
       }
     };
-    const handleError = () => {
+    const handleError = (e: any) => {
+      console.error("Audio error event:", e);
       setStatus("error");
       setErrorMessage("Audio could not be loaded. Please try again.");
     };
@@ -140,10 +152,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setStatus("loading");
         audio.src = getAyahAudioUrl(nextAyahNumber, activeAyah.reciterId);
         audio.currentTime = 0;
-        audio.load();
-        void audio.play().catch(() => {
+        // Don't call load() here as it might break the auto-play chain
+        void audio.play().catch((error) => {
+          console.warn("Auto-play blocked:", error);
           setStatus("error");
-          setErrorMessage("Auto-play stopped because the next audio failed.");
+          setErrorMessage("Auto-play blocked by browser. Tap play to continue.");
         });
         return;
       }
@@ -167,6 +180,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
 
     return () => {
+      window.removeEventListener("click", unlock);
+      window.removeEventListener("touchstart", unlock);
       audio.pause();
       audio.src = "";
       audio.removeEventListener("waiting", handleWaiting);
@@ -210,9 +225,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setErrorMessage(null);
       
       // Update source and play
-      audio.src = getAyahAudioUrl(input.ayahNumber, reciter.id);
+      const audioUrl = getAyahAudioUrl(input.ayahNumber, reciter.id);
+      audio.src = audioUrl;
       audio.currentTime = 0;
-      audio.load();
       
       const playPromise = audio.play();
       if (playPromise !== undefined) {
@@ -222,7 +237,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           if (error.name === "NotAllowedError") {
             setErrorMessage("Browser blocked playback. Tap play again.");
           } else {
-            setErrorMessage("Playback failed. Please try again.");
+            setErrorMessage(`Playback error: ${error.message || "Unknown error"}. Tap play again.`);
           }
         });
       }
@@ -262,7 +277,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     if (audio) {
       audio.pause();
       audio.src = "";
-      audio.load();
     }
 
     currentAyahRef.current = null;
