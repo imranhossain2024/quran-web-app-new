@@ -52,6 +52,12 @@ export default function AppShell({ children, surahs }: AppShellProps) {
     lastScrollY.current = window.scrollY;
   }, []);
 
+  // Close menus when navigating
+  useEffect(() => {
+    setIsSurahMenuOpen(false);
+    setIsSettingsOpen(false);
+  }, [pathname]);
+
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;

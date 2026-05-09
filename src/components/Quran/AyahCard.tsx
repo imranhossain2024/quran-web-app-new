@@ -125,19 +125,23 @@ export default function AyahCard({
       className={`scroll-mt-24 my-6 min-w-0 overflow-hidden rounded-2xl border transition-all duration-500 ${
         isActive && settings.highlightCurrentAyah
           ? "border-emerald-500/50 bg-emerald-500/5 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-500/20"
-          : "border-slate-800/50 bg-slate-900/40 hover:border-slate-700/50"
+          : "border-[var(--border)] bg-[var(--surface)] opacity-95 hover:opacity-100 hover:border-slate-700/50"
       } p-5 sm:p-6`}
+      style={{ 
+        backgroundColor: isActive && settings.highlightCurrentAyah ? undefined : 'var(--surface)',
+        borderColor: isActive && settings.highlightCurrentAyah ? undefined : 'var(--border)'
+      }}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className={`flex h-10 min-w-10 items-center justify-center rounded-xl font-bold transition-colors ${
-            isActive ? "bg-emerald-500 text-slate-950" : "bg-slate-950 text-emerald-400 border border-slate-800"
+            isActive ? "bg-emerald-500 text-slate-950" : "bg-[var(--background)] text-emerald-400 border border-[var(--border)]"
           } text-sm`}>
             {ayah.numberInSurah}
           </span>
           <div className="hidden sm:block">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Ayah</p>
-            <p className="text-xs font-bold text-slate-400">{surahName} {surahNumber}:{ayah.numberInSurah}</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest opacity-50">Ayah</p>
+            <p className="text-xs font-bold opacity-70">{surahName} {surahNumber}:{ayah.numberInSurah}</p>
           </div>
         </div>
 
@@ -147,7 +151,7 @@ export default function AyahCard({
           className={`flex h-12 w-12 items-center justify-center rounded-xl transition-all duration-300 active:scale-95 ${
             isPlaying
               ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/30"
-              : "bg-slate-800/80 text-slate-200 hover:bg-slate-700 hover:text-white"
+              : "bg-[var(--border)] text-[var(--foreground)] hover:bg-slate-700 hover:text-white"
           }`}
           aria-label={isPlaying ? "Pause ayah audio" : "Play ayah audio"}
         >
@@ -161,38 +165,44 @@ export default function AyahCard({
 
       <div className="mt-8 flex flex-col gap-6">
         <p
-          className={`arabic-text min-w-0 transition-colors duration-500 ${
-            isActive ? "text-emerald-50" : "text-slate-50"
-          }`}
+          className="arabic-text min-w-0 transition-colors duration-500"
+          style={{ 
+            color: isActive ? 'var(--accent)' : 'var(--foreground)',
+          }}
           dir="rtl"
           lang="ar"
         >
           {ayah.text}
           {settings.showAyahNumbers && (
-            <span className={`mr-4 inline-flex h-10 min-w-10 items-center justify-center rounded-full border align-middle text-sm transition-all duration-500 ${
-              isActive 
-                ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-300" 
-                : "border-slate-700 bg-slate-800/50 text-slate-400"
-            }`}>
+            <span className="mr-4 inline-flex h-10 min-w-10 items-center justify-center rounded-full border align-middle text-sm transition-all duration-500"
+              style={{
+                borderColor: isActive ? 'var(--accent)' : 'var(--border)',
+                backgroundColor: isActive ? 'var(--accent-muted)' : 'transparent',
+                color: isActive ? 'var(--accent)' : 'var(--foreground)'
+              }}
+            >
               {ayah.numberInSurah}
             </span>
           )}
         </p>
 
         {ayah.translation && !settings.readingMode && settings.showTranslation && (
-          <p className={`translation-text text-left leading-relaxed transition-colors duration-500 ${
-            isActive ? "text-slate-100" : "text-slate-400"
-          }`}>
+          <p className="translation-text text-left leading-relaxed transition-all duration-500"
+             style={{ 
+               color: 'var(--foreground)',
+               opacity: isActive ? 1 : 0.7
+             }}
+          >
             {ayah.translation}
           </p>
         )}
       </div>
 
-      <div className="mt-8 flex items-center justify-between border-t border-slate-800/30 pt-6">
+      <div className="mt-8 flex items-center justify-between border-t border-[var(--border)] pt-6 opacity-80">
         <div className="flex items-center gap-1 sm:gap-2">
           <button
             onClick={() => copyToClipboard(ayah.text, "arabic")}
-            className="group flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold text-slate-500 transition-all hover:bg-slate-800 hover:text-slate-200"
+            className="group flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold opacity-60 transition-all hover:bg-[var(--border)] hover:opacity-100"
             title="Copy Arabic"
           >
             {copyStatus === "arabic" ? (
@@ -206,7 +216,7 @@ export default function AyahCard({
           {ayah.translation && (
             <button
               onClick={() => copyToClipboard(ayah.translation, "translation")}
-              className="group flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold text-slate-500 transition-all hover:bg-slate-800 hover:text-slate-200"
+              className="group flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold opacity-60 transition-all hover:bg-[var(--border)] hover:opacity-100"
               title="Copy Translation"
             >
               {copyStatus === "translation" ? (
@@ -220,7 +230,7 @@ export default function AyahCard({
 
           <button
             onClick={shareAyah}
-            className="group flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold text-slate-500 transition-all hover:bg-slate-800 hover:text-slate-200"
+            className="group flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold opacity-60 transition-all hover:bg-[var(--border)] hover:opacity-100"
             title="Share"
           >
             <ShareIcon className="h-4 w-4 transition-transform group-hover:scale-110" />
@@ -232,7 +242,7 @@ export default function AyahCard({
             className={`group flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold transition-all ${
               isTafsirOpen
                 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                : "text-slate-500 hover:bg-slate-800 hover:text-slate-200"
+                : "opacity-60 hover:bg-[var(--border)] hover:opacity-100"
             }`}
             title="Tafsir"
             aria-label={isTafsirOpen ? "Hide tafsir" : "Show tafsir"}
@@ -249,7 +259,7 @@ export default function AyahCard({
             className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 active:scale-95 ${
               isAyahFavorite
                 ? "bg-rose-500/10 text-rose-500 border border-rose-500/20"
-                : "bg-slate-900/50 text-slate-500 border border-slate-800 hover:border-rose-500/30 hover:text-rose-400"
+                : "bg-[var(--background)] opacity-60 border border-[var(--border)] hover:border-rose-500/30 hover:text-rose-400 hover:opacity-100"
             }`}
             title={isAyahFavorite ? "Remove Favorite" : "Favorite"}
             aria-label={isAyahFavorite ? "Remove Favorite" : "Favorite"}
@@ -266,7 +276,7 @@ export default function AyahCard({
             className={`group flex h-10 items-center gap-2 rounded-xl px-4 text-xs font-bold transition-all duration-300 active:scale-95 ${
               isBookmarked
                 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                : "bg-slate-900/50 text-slate-500 border border-slate-800 hover:border-emerald-500/30 hover:text-emerald-400"
+                : "bg-[var(--background)] opacity-60 border border-[var(--border)] hover:border-emerald-500/30 hover:text-emerald-400 hover:opacity-100"
             }`}
             title={isBookmarked ? "Remove Bookmark" : "Add Bookmark"}
           >
