@@ -102,11 +102,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, [settings.autoPlayNext]);
 
   useEffect(() => {
-    const audio = new Audio();
-    audio.preload = "metadata";
-    audio.volume = volume;
-    audio.muted = isMuted;
-    audioRef.current = audio;
+    const audio = audioRef.current;
+    if (!audio) return;
 
     const handleWaiting = () => setStatus("loading");
     const handlePlaying = () => {
@@ -143,6 +140,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setStatus("loading");
         audio.src = getAyahAudioUrl(nextAyahNumber, activeAyah.reciterId);
         audio.currentTime = 0;
+        audio.load();
         void audio.play().catch(() => {
           setStatus("error");
           setErrorMessage("Auto-play stopped because the next audio failed.");
@@ -197,9 +195,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       const audio = audioRef.current;
       const reciter = getReciterById(settings.reciterId);
 
-      if (!audio) {
-        return;
-      }
+      if (!audio) return;
 
       const nextAyah: CurrentAyah = {
         ...input,
@@ -212,12 +208,24 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setDuration(0);
       setStatus("loading");
       setErrorMessage(null);
+      
+      // Update source and play
       audio.src = getAyahAudioUrl(input.ayahNumber, reciter.id);
       audio.currentTime = 0;
-      void audio.play().catch(() => {
-        setStatus("error");
-        setErrorMessage("Browser blocked playback. Tap play again.");
-      });
+      audio.load();
+      
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.error("Playback failed:", error);
+          setStatus("error");
+          if (error.name === "NotAllowedError") {
+            setErrorMessage("Browser blocked playback. Tap play again.");
+          } else {
+            setErrorMessage("Playback failed. Please try again.");
+          }
+        });
+      }
     },
     [settings.reciterId],
   );
@@ -235,16 +243,17 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const resume = useCallback(() => {
     const audio = audioRef.current;
-
-    if (!audio || !currentAyahRef.current) {
-      return;
-    }
+    if (!audio || !currentAyahRef.current) return;
 
     setStatus("loading");
-    void audio.play().catch(() => {
-      setStatus("error");
-      setErrorMessage("Browser blocked playback. Tap play again.");
-    });
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((error) => {
+        console.error("Resume failed:", error);
+        setStatus("error");
+        setErrorMessage("Browser blocked playback. Tap play again.");
+      });
+    }
   }, []);
 
   const stop = useCallback(() => {
@@ -252,7 +261,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     if (audio) {
       audio.pause();
-      audio.removeAttribute("src");
+      audio.src = "";
       audio.load();
     }
 
@@ -455,7 +464,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
 
   return (
-    <AudioContext.Provider value={value}>{children}</AudioContext.Provider>
+    <AudioContext.Provider value={value}>
+      {children}
+      <audio
+        ref={audioRef}
+        preload="metadata"
+        style={{ display: "none" }}
+        aria-hidden="true"
+      />
+    </AudioContext.Provider>
   );
 }
 
