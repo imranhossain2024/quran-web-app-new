@@ -4,6 +4,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import SurahHeader from "@/components/Quran/SurahHeader";
 import AyahCard from "@/components/Quran/AyahCard";
 import PageJumper from "@/components/Quran/PageJumper";
+import PageQuickActions from "@/components/Quran/PageQuickActions";
 import { getAdjacentSurahs, getPageForAyah, getSurah } from "@/lib/quran";
 import type { Surah } from "@/types/quran";
 
@@ -93,6 +94,7 @@ export default async function SurahPage({ params }: SurahPageProps) {
           </Link>
         ) : null}
       </nav>
+      <PageQuickActions currentPage={currentPage} />
     </section>
   );
 }

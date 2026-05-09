@@ -5,6 +5,7 @@ export interface ReadingSettingsState {
   showTranslation: boolean;
   theme: "dark" | "light" | "system" | "sepia";
   lineHeight: number;
+  readingMode: boolean;
 }
 
 export const DEFAULT_READING_SETTINGS: ReadingSettingsState = {
@@ -14,4 +15,5 @@ export const DEFAULT_READING_SETTINGS: ReadingSettingsState = {
   showTranslation: true,
   theme: "system",
   lineHeight: 1.8,
+  readingMode: false,
 };

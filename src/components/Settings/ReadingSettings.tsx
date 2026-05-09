@@ -147,15 +147,34 @@ export default function ReadingSettings({ open, onClose }: ReadingSettingsProps)
           {/* Display Toggles */}
           <section className="space-y-4">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500">Display Options</h3>
+            
+            {/* Reading Mode Toggle */}
             <label className="flex items-center justify-between gap-4 rounded-lg border border-slate-800 bg-slate-900/50 p-4 transition-colors hover:bg-slate-900">
+              <span>
+                <span className="block text-sm font-medium text-slate-200">Reading</span>
+                <span className="mt-0.5 block text-xs text-slate-400">Arabic-only mode for focused reading</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={settings.readingMode}
+                onChange={(e) => updateSetting("readingMode", e.target.checked)}
+                className="h-5 w-5 accent-emerald-500 rounded border-slate-700 bg-slate-800"
+              />
+            </label>
+
+            {/* Translation Toggle */}
+            <label className={`flex items-center justify-between gap-4 rounded-lg border border-slate-800 bg-slate-900/50 p-4 transition-colors ${
+              settings.readingMode ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-900"
+            }`}>
               <span>
                 <span className="block text-sm font-medium text-slate-200">Translation</span>
                 <span className="mt-0.5 block text-xs text-slate-400">Show or hide ayah translations</span>
               </span>
               <input
                 type="checkbox"
-                checked={settings.showTranslation}
-                onChange={(e) => updateSetting("showTranslation", e.target.checked)}
+                checked={!settings.readingMode && settings.showTranslation}
+                onChange={(e) => !settings.readingMode && updateSetting("showTranslation", e.target.checked)}
+                disabled={settings.readingMode}
                 className="h-5 w-5 accent-emerald-500 rounded border-slate-700 bg-slate-800"
               />
             </label>

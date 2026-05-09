@@ -112,7 +112,6 @@ export default function AyahCard({
       surahAyahCount,
       surahNumber,
       surahName,
-      arabicText: ayah.text,
     });
   };
 
@@ -144,9 +143,9 @@ export default function AyahCard({
           )}
         </button>
       </div>
-      <div className="mt-5 grid gap-4 md:grid-cols-12 md:items-start">
+      <div className="mt-5 flex flex-col gap-4">
         <p
-          className={`${ayah.translation ? "md:col-span-8" : "md:col-span-12"} arabic-text min-w-0 text-right leading-loose text-slate-50`}
+          className="arabic-text min-w-0 text-right leading-loose text-slate-50"
           dir="rtl"
           lang="ar"
         >
@@ -155,8 +154,8 @@ export default function AyahCard({
             {ayah.numberInSurah}
           </span>
         </p>
-        {ayah.translation && settings.showTranslation ? (
-          <p className="translation-text text-left leading-7 text-slate-300 md:col-span-4">
+        {ayah.translation && !settings.readingMode && settings.showTranslation ? (
+          <p className="translation-text text-left leading-7 text-slate-300">
             {ayah.translation}
           </p>
         ) : null}

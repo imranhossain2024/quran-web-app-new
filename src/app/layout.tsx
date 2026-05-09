@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import React from "react";
 import "./globals.css";
 import AppShell from "@/components/Layout/AppShell";
+import ScrollToTop from "@/components/ScrollToTop";
 import { getSurahSummaries } from "@/lib/quran";
 
 export const metadata: Metadata = {
@@ -19,6 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full bg-slate-950 text-slate-100">
+        <ScrollToTop />
         <AppShell surahs={surahs}>{children}</AppShell>
       </body>
     </html>

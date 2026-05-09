@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Bars3Icon,
   Cog6ToothIcon,
@@ -29,6 +29,8 @@ interface AppShellProps {
 
 export default function AppShell({ children, surahs }: AppShellProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const isHomePage = pathname === "/";
   const [isSurahMenuOpen, setIsSurahMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useLocalStorage("sidebarCollapsed", false);
@@ -157,7 +159,9 @@ export default function AppShell({ children, surahs }: AppShellProps) {
         </div>
       </header>
 
-      <main className={`min-h-screen max-w-full overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8 transition-all duration-300 ${
+      <main className={`min-h-screen max-w-full overflow-x-hidden transition-all duration-300 ${
+        isHomePage ? "p-0" : "px-4 py-6 sm:px-6 lg:px-8"
+      } ${
         isSidebarCollapsed ? "lg:ml-16" : "lg:ml-96"
       }`}>
         {children}
