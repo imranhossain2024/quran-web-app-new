@@ -549,7 +549,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       <audio
         ref={audioRef}
         preload="metadata"
-        crossOrigin="anonymous"
         style={{ display: "none" }}
         aria-hidden="true"
       />
