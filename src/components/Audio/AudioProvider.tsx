@@ -105,68 +105,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const audio = audioRef.current;
     if (!audio) return;
 
-    // STEP 1: Prime the audio element with base64-encoded silence
-    // This gives the element a valid src immediately so it can be "unlocked"
-    // by user interaction. On HTTPS, browsers need the audio element to have
-    // been "activated" by a gesture at least once before any play() call
-    // with a real URL will succeed.
-    const SILENCE_BASE64 =
-      "data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAWGluZwAAAAAA" +
-      "AAAAP/9j/4AAABhZGRvdkRFRkwAAACDxMDAwP//4QoA5ABpbmRleC5odG1sAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
-      "AAAAAAAAAAAAAAAAAAAAAP/zAAABkAABpAAAk2gAAAAAABAAAAAAAAAAAAAAAAAAAABIEFkb2JlIFBob3Rvc2hvcCA1LjAgV2luZG93cwAA" +
-      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAP8AAAD/AAAA/wAAAP//AAAAAP//AAD//wAA//8AAP//AAD//xEBEgAAAABQYXltZW50AAAAAAAAAAAAAAAAAAAA";
-    audio.src = SILENCE_BASE64;
-    audio.load();
-
-    // STEP 2: Persistent unlock mechanism for strict browser autoplay policy.
-    // Unlike the previous implementation which removed itself after one click,
-    // this uses a flag to only unlock once, but listens for ANY user gesture
-    // on the document to prime the audio element.
-    let isUnlocked = false;
-
-    const unlock = () => {
-      if (isUnlocked || !audio) return;
-      isUnlocked = true;
-
-      // Resume any suspended AudioContext (global unlock for audio)
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const AudioContextClass =
-          window.AudioContext ||
-          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        const ctx = new AudioContextClass();
-        ctx.resume().catch(() => {});
-        // Create a silent buffer and play it to unlock audio
-        const buffer = ctx.createBuffer(1, 1, 22050);
-        const source = ctx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(ctx.destination);
-        source.start(0);
-      } catch (_e) {
-        // AudioContext not available, fall back to HTMLAudioElement unlock
-      }
-
-      // Play the audio element (which now has silence loaded) to activate it
-      // This is the critical step - it marks this audio element as "user-activated"
-      audio.play()
-        .then(() => {
-          audio.pause();
-          audio.currentTime = 0;
-        })
-        .catch(() => {
-          // If silence fails, the element still may have been primed partially
-          // Try alternative: load a small actual audio fragment
-        });
-
-      // Keep the listeners in place - remove only the unlock logic
-      // but DON'T remove the listeners themselves - they provide resilience
-    };
-
-    // Use capture phase to catch events before React's synthetic events
-    window.addEventListener("click", unlock, { once: true });
-    window.addEventListener("touchstart", unlock, { once: true });
-    window.addEventListener("keydown", unlock, { once: true });
-
     const handleWaiting = () => setStatus("loading");
     const handlePlaying = () => {
       setStatus("playing");
@@ -178,10 +116,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       }
     };
     const handleError = () => {
-      // Don't set error for silence base64 - it's expected to fail
-      if (audio && audio.src && audio.src.startsWith("data:audio")) {
-        return;
-      }
       setStatus("error");
       setErrorMessage("Audio could not be loaded. Please try again.");
     };
@@ -205,7 +139,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setStatus("loading");
         audio.src = getAyahAudioUrl(nextAyahNumber, activeAyah.reciterId);
         audio.currentTime = 0;
-        // Don't call load() here as it might break the auto-play chain
         void audio.play().catch((error) => {
           console.warn("Auto-play blocked:", error);
           setStatus("error");
@@ -233,9 +166,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
 
     return () => {
-      window.removeEventListener("click", unlock);
-      window.removeEventListener("touchstart", unlock);
-      window.removeEventListener("keydown", unlock);
       audio.pause();
       audio.src = "";
       audio.removeEventListener("waiting", handleWaiting);
@@ -259,56 +189,76 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     audio.muted = isMuted;
   }, [volume, isMuted]);
 
+  const initPlayback = useCallback((input: PlayAyahInput, reciterId: string): string => {
+    const reciter = getReciterById(reciterId);
+    const audioUrl = getAyahAudioUrl(input.ayahNumber, reciter.id);
+
+    const nextAyah: CurrentAyah = {
+      ...input,
+      reciterId: reciter.id,
+    };
+    currentAyahRef.current = nextAyah;
+
+    setCurrentAyah(nextAyah);
+    setCurrentTime(0);
+    setDuration(0);
+    setStatus("loading");
+    setErrorMessage(null);
+
+    return audioUrl;
+  }, []);
+
   const playAyah = useCallback(
     (input: PlayAyahInput) => {
       const audio = audioRef.current;
       if (!audio) return;
 
-      const reciter = getReciterById(settings.reciterId);
-      const audioUrl = getAyahAudioUrl(input.ayahNumber, reciter.id);
+      const audioUrl = initPlayback(input, settings.reciterId);
       
-      // CRITICAL FIX for NotAllowedError on HTTPS:
-      // 1. Do NOT call audio.load() after setting src - it invalidates the
-      //    browser's transient activation (user gesture token).
-      // 2. Setting audio.src automatically schedules loading; calling load()
-      //    explicitly resets readyState to HAVE_NOTHING and drops gesture context.
-      // 3. Call audio.play() synchronously within this user gesture context.
-      //
-      // The order is: set src → immediately call play() → update React state later
+      // Strategy: Set src and use a handler that plays once the audio is loadable.
+      // This avoids NotAllowedError that occurs when play() is called before the
+      // browser has validated the source. The user gesture from the click is used
+      // to initiate the load, and we'll play as soon as the audio is ready.
       audio.src = audioUrl;
-      
-      // Update refs BEFORE play (these are synchronous and don't trigger re-renders)
-      const nextAyah: CurrentAyah = {
-        ...input,
-        reciterId: reciter.id,
-      };
-      currentAyahRef.current = nextAyah;
-      
-      // Call play() IMMEDIATELY - before any React state updates.
-      // State updates (setState) schedule a re-render which could, in theory,
-      // interrupt the gesture context in some edge cases.
+
+      // Try immediate play - works if the audio is already cached or loads fast enough
       const playPromise = audio.play();
-      
-      // Now update React state (these are batched in React 18+)
-      setCurrentAyah(nextAyah);
-      setCurrentTime(0);
-      setDuration(0);
-      setStatus("loading");
-      setErrorMessage(null);
-      
       if (playPromise !== undefined) {
         playPromise.catch((error) => {
-          console.error("Playback failed details:", error);
-          setStatus("error");
-          if (error.name === "NotAllowedError") {
-            setErrorMessage("Browser blocked playback. Please click/tap again to allow.");
-          } else {
-            setErrorMessage(`Playback error: ${error.name} - ${error.message || "Unknown error"}. Tap play again.`);
-          }
+          // If play() rejects (NotAllowedError or transient issue), 
+          // wait for the audio to be loadable then play
+          console.warn("Immediate play failed, will retry on canplay:", error.name);
+          
+          const onCanPlay = () => {
+            audio.removeEventListener("canplay", onCanPlay);
+            audio.play().catch((retryError) => {
+              console.error("Playback failed after retry:", retryError);
+              setStatus("error");
+              if (retryError.name === "NotAllowedError") {
+                setErrorMessage("Browser blocked playback. Please click/tap again to allow.");
+              } else {
+                setErrorMessage(`Playback error: ${retryError.name}. Tap play again.`);
+              }
+            });
+          };
+          audio.addEventListener("canplay", onCanPlay);
+
+          // Also set a timeout to show error if audio doesn't become playable
+          setTimeout(() => {
+            audio.removeEventListener("canplay", onCanPlay);
+            if (status !== "playing" && status !== "paused") {
+              setStatus("error");
+              if (error.name === "NotAllowedError") {
+                setErrorMessage("Browser blocked playback. Please click/tap again to allow.");
+              } else {
+                setErrorMessage("Audio could not be loaded. Please try again.");
+              }
+            }
+          }, 10000);
         });
       }
     },
-    [settings.reciterId],
+    [settings.reciterId, initPlayback, status],
   );
 
   const pause = useCallback(() => {
@@ -548,7 +498,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       {children}
       <audio
         ref={audioRef}
-        preload="metadata"
+        preload="auto"
         style={{ display: "none" }}
         aria-hidden="true"
       />
