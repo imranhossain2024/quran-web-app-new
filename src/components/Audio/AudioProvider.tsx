@@ -101,6 +101,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     autoPlayNextRef.current = settings.autoPlayNext;
   }, [settings.autoPlayNext]);
 
+  // Setup audio event listeners once
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -122,7 +123,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const handleEnded = () => {
       const activeAyah = currentAyahRef.current;
 
-      // Handle auto-play next
       if (
         autoPlayNextRef.current &&
         activeAyah &&
@@ -139,8 +139,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setStatus("loading");
         audio.src = getAyahAudioUrl(nextAyahNumber, activeAyah.reciterId);
         audio.currentTime = 0;
-        void audio.play().catch((error) => {
-          console.warn("Auto-play blocked:", error);
+        audio.play().catch(() => {
           setStatus("error");
           setErrorMessage("Auto-play blocked by browser. Tap play to continue.");
         });
@@ -180,94 +179,86 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const audio = audioRef.current;
-
-    if (!audio) {
-      return;
-    }
-
+    if (!audio) return;
     audio.volume = volume;
     audio.muted = isMuted;
   }, [volume, isMuted]);
-
-  const initPlayback = useCallback((input: PlayAyahInput, reciterId: string): string => {
-    const reciter = getReciterById(reciterId);
-    const audioUrl = getAyahAudioUrl(input.ayahNumber, reciter.id);
-
-    const nextAyah: CurrentAyah = {
-      ...input,
-      reciterId: reciter.id,
-    };
-    currentAyahRef.current = nextAyah;
-
-    setCurrentAyah(nextAyah);
-    setCurrentTime(0);
-    setDuration(0);
-    setStatus("loading");
-    setErrorMessage(null);
-
-    return audioUrl;
-  }, []);
 
   const playAyah = useCallback(
     (input: PlayAyahInput) => {
       const audio = audioRef.current;
       if (!audio) return;
 
-      const audioUrl = initPlayback(input, settings.reciterId);
-      
-      // Strategy: Set src and use a handler that plays once the audio is loadable.
-      // This avoids NotAllowedError that occurs when play() is called before the
-      // browser has validated the source. The user gesture from the click is used
-      // to initiate the load, and we'll play as soon as the audio is ready.
+      const reciter = getReciterById(settings.reciterId);
+      const audioUrl = getAyahAudioUrl(input.ayahNumber, reciter.id);
+
+      const nextAyah: CurrentAyah = {
+        ...input,
+        reciterId: reciter.id,
+      };
+      currentAyahRef.current = nextAyah;
+
+      setCurrentAyah(nextAyah);
+      setCurrentTime(0);
+      setDuration(0);
+      setErrorMessage(null);
+
+      // Set the audio source
       audio.src = audioUrl;
 
-      // Try immediate play - works if the audio is already cached or loads fast enough
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch((error) => {
-          // If play() rejects (NotAllowedError or transient issue), 
-          // wait for the audio to be loadable then play
-          console.warn("Immediate play failed, will retry on canplay:", error.name);
-          
-          const onCanPlay = () => {
-            audio.removeEventListener("canplay", onCanPlay);
-            audio.play().catch((retryError) => {
-              console.error("Playback failed after retry:", retryError);
-              setStatus("error");
-              if (retryError.name === "NotAllowedError") {
-                setErrorMessage("Browser blocked playback. Please click/tap again to allow.");
-              } else {
-                setErrorMessage(`Playback error: ${retryError.name}. Tap play again.`);
-              }
-            });
-          };
-          audio.addEventListener("canplay", onCanPlay);
+      // KEY FIX: Set muted to true initially to bypass autoplay policy.
+      // Browsers allow muted audio to play without user gesture.
+      // After playback starts, we unmute and restore the user's volume preference.
+      const wasMuted = audio.muted;
+      const userVolume = audio.volume;
+      audio.muted = true;
 
-          // Also set a timeout to show error if audio doesn't become playable
-          setTimeout(() => {
-            audio.removeEventListener("canplay", onCanPlay);
-            if (status !== "playing" && status !== "paused") {
-              setStatus("error");
-              if (error.name === "NotAllowedError") {
-                setErrorMessage("Browser blocked playback. Please click/tap again to allow.");
-              } else {
-                setErrorMessage("Audio could not be loaded. Please try again.");
-              }
-            }
-          }, 10000);
+      // load() tells the browser to start fetching immediately.
+      // Without load(), the browser may defer loading and then play() will fail.
+      audio.load();
+
+      setStatus("loading");
+
+      // Use canplaythrough to ensure the audio is loaded before trying to play
+      const onCanPlayThrough = () => {
+        audio.removeEventListener("canplaythrough", onCanPlayThrough);
+        audio.removeEventListener("error", onError);
+
+        audio.play().then(() => {
+          // Successfully playing muted - now unmute and restore volume
+          audio.muted = wasMuted;
+          audio.volume = userVolume;
+        }).catch((playError) => {
+          console.error("Play failed after load:", playError);
+          audio.muted = wasMuted;
+          audio.volume = userVolume;
+          setStatus("error");
+          if (playError.name === "NotAllowedError") {
+            setErrorMessage("Browser blocked playback. Please click/tap again to allow.");
+          } else {
+            setErrorMessage(`Playback error: ${playError.name}. Tap play again.`);
+          }
         });
-      }
+      };
+
+      const onError = () => {
+        audio.removeEventListener("canplaythrough", onCanPlayThrough);
+        audio.removeEventListener("error", onError);
+        audio.muted = wasMuted;
+        audio.volume = userVolume;
+        setStatus("error");
+        setErrorMessage("Audio could not be loaded. The source may be unavailable.");
+      };
+
+      audio.addEventListener("canplaythrough", onCanPlayThrough);
+      audio.addEventListener("error", onError);
     },
-    [settings.reciterId, initPlayback, status],
+    [settings.reciterId],
   );
 
   const pause = useCallback(() => {
     const audio = audioRef.current;
-
-    if (!audio) {
-      return;
-    }
-
+    if (!audio) return;
     audio.pause();
     setStatus("paused");
   }, []);
@@ -277,24 +268,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     if (!audio || !currentAyahRef.current) return;
 
     setStatus("loading");
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-      playPromise.catch((error) => {
-        console.error("Resume failed:", error);
-        setStatus("error");
-        setErrorMessage("Browser blocked playback. Tap play again.");
-      });
-    }
+    audio.play().catch((error) => {
+      console.error("Resume failed:", error);
+      setStatus("error");
+      setErrorMessage("Browser blocked playback. Tap play again.");
+    });
   }, []);
 
   const stop = useCallback(() => {
     const audio = audioRef.current;
-
     if (audio) {
       audio.pause();
       audio.src = "";
     }
-
     currentAyahRef.current = null;
     setCurrentAyah(null);
     setCurrentTime(0);
@@ -306,11 +292,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const seek = useCallback(
     (time: number) => {
       const audio = audioRef.current;
-
-      if (!audio) {
-        return;
-      }
-
+      if (!audio) return;
       const nextTime = clamp(time, 0, duration || Number.POSITIVE_INFINITY);
       audio.currentTime = nextTime;
       setCurrentTime(nextTime);
@@ -322,7 +304,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const adjusted = clamp(nextVolume, 0, 1);
     setVolumeState(adjusted);
     setIsMuted(adjusted === 0);
-
     if (adjusted > 0) {
       lastVolumeRef.current = adjusted;
     }
@@ -334,7 +315,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setVolumeState(lastVolumeRef.current || 0.8);
       return;
     }
-
     lastVolumeRef.current = volume || lastVolumeRef.current;
     setIsMuted(true);
   }, [isMuted, volume]);
@@ -355,11 +335,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const playNextAyah = useCallback(() => {
     const activeAyah = currentAyahRef.current;
-
     if (!activeAyah || activeAyah.numberInSurah >= activeAyah.surahAyahCount) {
       return;
     }
-
     playAyah({
       ayahNumber: activeAyah.ayahNumber + 1,
       numberInSurah: activeAyah.numberInSurah + 1,
@@ -371,11 +349,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const playPreviousAyah = useCallback(() => {
     const activeAyah = currentAyahRef.current;
-
     if (!activeAyah || activeAyah.numberInSurah <= 1) {
       return;
     }
-
     playAyah({
       ayahNumber: activeAyah.ayahNumber - 1,
       numberInSurah: activeAyah.numberInSurah - 1,
@@ -492,13 +468,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
-
   return (
     <AudioContext.Provider value={value}>
       {children}
       <audio
         ref={audioRef}
         preload="auto"
+        muted
         style={{ display: "none" }}
         aria-hidden="true"
       />
@@ -508,10 +484,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
 export function useAudio() {
   const context = useContext(AudioContext);
-
   if (!context) {
     throw new Error("useAudio must be used inside AudioProvider");
   }
-
   return context;
 }
