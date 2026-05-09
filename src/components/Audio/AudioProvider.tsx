@@ -212,6 +212,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
       if (!audio) return;
 
+      const audioUrl = getAyahAudioUrl(input.ayahNumber, reciter.id);
+      
+      // Capture gesture context as early as possible
+      // First, set the source and immediately call play
+      audio.src = audioUrl;
+      
+      const playPromise = audio.play();
+      
+      // Update UI states AFTER initiating playback
       const nextAyah: CurrentAyah = {
         ...input,
         reciterId: reciter.id,
@@ -224,15 +233,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setStatus("loading");
       setErrorMessage(null);
       
-      // Update source and play
-      const audioUrl = getAyahAudioUrl(input.ayahNumber, reciter.id);
-      audio.src = audioUrl;
-      audio.currentTime = 0;
-      
-      const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise.catch((error) => {
           console.error("Playback failed:", error);
+          // If it fails, update status to error
           setStatus("error");
           if (error.name === "NotAllowedError") {
             setErrorMessage("Browser blocked playback. Tap play again.");
