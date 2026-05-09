@@ -93,6 +93,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [volume, setVolumeState] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
 
+  // Sync refs with state via effects
   useEffect(() => {
     currentAyahRef.current = currentAyah;
   }, [currentAyah]);
@@ -101,7 +102,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     autoPlayNextRef.current = settings.autoPlayNext;
   }, [settings.autoPlayNext]);
 
-  // Setup audio event listeners once
+  // Set up audio event listeners once on mount
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -112,9 +113,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setErrorMessage(null);
     };
     const handlePause = () => {
-      if (!audio.ended) {
-        setStatus("paused");
-      }
+      if (!audio.ended) setStatus("paused");
     };
     const handleError = () => {
       setStatus("error");
@@ -122,35 +121,29 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     };
     const handleEnded = () => {
       const activeAyah = currentAyahRef.current;
-
       if (
         autoPlayNextRef.current &&
         activeAyah &&
         activeAyah.numberInSurah < activeAyah.surahAyahCount
       ) {
-        const nextAyahNumber = activeAyah.ayahNumber + 1;
-        const nextAyah: CurrentAyah = {
+        const nextNum = activeAyah.ayahNumber + 1;
+        setCurrentAyah({
           ...activeAyah,
-          ayahNumber: nextAyahNumber,
+          ayahNumber: nextNum,
           numberInSurah: activeAyah.numberInSurah + 1,
-        };
-
-        setCurrentAyah(nextAyah);
+        });
         setStatus("loading");
-        audio.src = getAyahAudioUrl(nextAyahNumber, activeAyah.reciterId);
+        audio.src = getAyahAudioUrl(nextNum, activeAyah.reciterId);
         audio.currentTime = 0;
-        audio.play().catch(() => {
+        void audio.play().catch(() => {
           setStatus("error");
-          setErrorMessage("Auto-play blocked by browser. Tap play to continue.");
+          setErrorMessage("Auto-play blocked by browser.");
         });
         return;
       }
-
       setStatus("idle");
     };
-    const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
-    };
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     const handleLoadedMetadata = () => {
       setDuration(audio.duration);
       setErrorMessage(null);
@@ -177,6 +170,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Sync volume/muted to audio element
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -197,61 +191,38 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         reciterId: reciter.id,
       };
       currentAyahRef.current = nextAyah;
-
       setCurrentAyah(nextAyah);
       setCurrentTime(0);
       setDuration(0);
+      setStatus("loading");
       setErrorMessage(null);
 
-      // Set the audio source
-      audio.src = audioUrl;
-
-      // KEY FIX: Set muted to true initially to bypass autoplay policy.
-      // Browsers allow muted audio to play without user gesture.
-      // After playback starts, we unmute and restore the user's volume preference.
-      const wasMuted = audio.muted;
+      // Bypass autoplay policy: browsers allow muted audio to play
+      // Save user's mute state, force mute, set source, then unmute after play starts
+      const userMuted = audio.muted;
       const userVolume = audio.volume;
       audio.muted = true;
+      audio.volume = 1;
 
-      // load() tells the browser to start fetching immediately.
-      // Without load(), the browser may defer loading and then play() will fail.
-      audio.load();
+      audio.src = audioUrl;
+      audio.currentTime = 0;
 
-      setStatus("loading");
-
-      // Use canplaythrough to ensure the audio is loaded before trying to play
-      const onCanPlayThrough = () => {
-        audio.removeEventListener("canplaythrough", onCanPlayThrough);
-        audio.removeEventListener("error", onError);
-
-        audio.play().then(() => {
-          // Successfully playing muted - now unmute and restore volume
-          audio.muted = wasMuted;
-          audio.volume = userVolume;
-        }).catch((playError) => {
-          console.error("Play failed after load:", playError);
-          audio.muted = wasMuted;
-          audio.volume = userVolume;
-          setStatus("error");
-          if (playError.name === "NotAllowedError") {
-            setErrorMessage("Browser blocked playback. Please click/tap again to allow.");
-          } else {
-            setErrorMessage(`Playback error: ${playError.name}. Tap play again.`);
-          }
-        });
-      };
-
-      const onError = () => {
-        audio.removeEventListener("canplaythrough", onCanPlayThrough);
-        audio.removeEventListener("error", onError);
-        audio.muted = wasMuted;
+      // play() will succeed because audio is muted
+      audio.play().then(() => {
+        // Now restore user's audio preferences
+        audio.muted = userMuted;
+        audio.volume = userVolume;
+      }).catch((err) => {
+        console.error("Playback error:", err);
+        audio.muted = userMuted;
         audio.volume = userVolume;
         setStatus("error");
-        setErrorMessage("Audio could not be loaded. The source may be unavailable.");
-      };
-
-      audio.addEventListener("canplaythrough", onCanPlayThrough);
-      audio.addEventListener("error", onError);
+        if (err.name === "NotAllowedError") {
+          setErrorMessage("Browser blocked playback. Please click/tap again.");
+        } else {
+          setErrorMessage("Audio could not be loaded. The source may be unavailable.");
+        }
+      });
     },
     [settings.reciterId],
   );
@@ -266,10 +237,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const resume = useCallback(() => {
     const audio = audioRef.current;
     if (!audio || !currentAyahRef.current) return;
-
     setStatus("loading");
-    audio.play().catch((error) => {
-      console.error("Resume failed:", error);
+
+    // Resume also may need muted bypass if called without user gesture
+    const userMuted = audio.muted;
+    const userVolume = audio.volume;
+    audio.muted = true;
+
+    audio.play().then(() => {
+      audio.muted = userMuted;
+      audio.volume = userVolume;
+    }).catch(() => {
+      audio.muted = userMuted;
+      audio.volume = userVolume;
       setStatus("error");
       setErrorMessage("Browser blocked playback. Tap play again.");
     });
@@ -304,40 +284,32 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const adjusted = clamp(nextVolume, 0, 1);
     setVolumeState(adjusted);
     setIsMuted(adjusted === 0);
-    if (adjusted > 0) {
-      lastVolumeRef.current = adjusted;
-    }
+    if (adjusted > 0) lastVolumeRef.current = adjusted;
   }, []);
 
   const toggleMute = useCallback(() => {
     if (isMuted) {
       setIsMuted(false);
       setVolumeState(lastVolumeRef.current || 0.8);
-      return;
+    } else {
+      lastVolumeRef.current = volume || lastVolumeRef.current;
+      setIsMuted(true);
     }
-    lastVolumeRef.current = volume || lastVolumeRef.current;
-    setIsMuted(true);
   }, [isMuted, volume]);
 
   const rewind = useCallback(
-    (seconds: number) => {
-      seek((currentTime || 0) - seconds);
-    },
+    (seconds: number) => seek((currentTime || 0) - seconds),
     [currentTime, seek],
   );
 
   const fastForward = useCallback(
-    (seconds: number) => {
-      seek((currentTime || 0) + seconds);
-    },
+    (seconds: number) => seek((currentTime || 0) + seconds),
     [currentTime, seek],
   );
 
   const playNextAyah = useCallback(() => {
     const activeAyah = currentAyahRef.current;
-    if (!activeAyah || activeAyah.numberInSurah >= activeAyah.surahAyahCount) {
-      return;
-    }
+    if (!activeAyah || activeAyah.numberInSurah >= activeAyah.surahAyahCount) return;
     playAyah({
       ayahNumber: activeAyah.ayahNumber + 1,
       numberInSurah: activeAyah.numberInSurah + 1,
@@ -349,9 +321,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const playPreviousAyah = useCallback(() => {
     const activeAyah = currentAyahRef.current;
-    if (!activeAyah || activeAyah.numberInSurah <= 1) {
-      return;
-    }
+    if (!activeAyah || activeAyah.numberInSurah <= 1) return;
     playAyah({
       ayahNumber: activeAyah.ayahNumber - 1,
       numberInSurah: activeAyah.numberInSurah - 1,
@@ -377,32 +347,25 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   );
 
   const increaseVolume = useCallback((step: number = 0.1) => {
-    setVolumeState((current) => {
-      const newVolume = clamp(current + step, 0, 1);
-      setIsMuted(newVolume === 0);
-      if (newVolume > 0) {
-        lastVolumeRef.current = newVolume;
-      }
-      return newVolume;
+    setVolumeState((c) => {
+      const nv = clamp(c + step, 0, 1);
+      setIsMuted(nv === 0);
+      if (nv > 0) lastVolumeRef.current = nv;
+      return nv;
     });
   }, []);
 
   const decreaseVolume = useCallback((step: number = 0.1) => {
-    setVolumeState((current) => {
-      const newVolume = clamp(current - step, 0, 1);
-      setIsMuted(newVolume === 0);
-      if (newVolume > 0) {
-        lastVolumeRef.current = newVolume;
-      }
-      return newVolume;
+    setVolumeState((c) => {
+      const nv = clamp(c - step, 0, 1);
+      setIsMuted(nv === 0);
+      if (nv > 0) lastVolumeRef.current = nv;
+      return nv;
     });
   }, []);
 
   const canPlayNext = useMemo(
-    () =>
-      Boolean(
-        currentAyah && currentAyah.numberInSurah < currentAyah.surahAyahCount,
-      ),
+    () => Boolean(currentAyah && currentAyah.numberInSurah < currentAyah.surahAyahCount),
     [currentAyah],
   );
 
@@ -441,30 +404,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       decreaseVolume,
     }),
     [
-      canPlayNext,
-      canPlayPrevious,
-      currentAyah,
-      currentTime,
-      duration,
-      errorMessage,
-      increaseVolume,
-      decreaseVolume,
-      isMuted,
-      playAyah,
-      pause,
-      playNextAyah,
-      playPreviousAyah,
-      resume,
-      seek,
-      setAutoPlayNext,
-      setReciter,
-      setVolume,
-      settings.autoPlayNext,
-      settings.reciterId,
-      status,
-      stop,
-      toggleMute,
-      volume,
+      canPlayNext, canPlayPrevious, currentAyah, currentTime, duration,
+      errorMessage, increaseVolume, decreaseVolume, isMuted,
+      playAyah, pause, playNextAyah, playPreviousAyah, resume, seek,
+      setAutoPlayNext, setReciter, setVolume, settings.autoPlayNext,
+      settings.reciterId, status, stop, toggleMute, volume,
     ],
   );
 
