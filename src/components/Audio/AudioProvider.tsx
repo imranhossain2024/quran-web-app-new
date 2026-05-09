@@ -23,6 +23,7 @@ interface PlayAyahInput {
   surahAyahCount: number;
   surahNumber: number;
   surahName: string;
+  arabicText?: string;
 }
 
 interface CurrentAyah extends PlayAyahInput {

@@ -112,6 +112,7 @@ export default function AyahCard({
       surahAyahCount,
       surahNumber,
       surahName,
+      arabicText: ayah.text,
     });
   };
 
