@@ -76,6 +76,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 export function AudioProvider({ children }: { children: React.ReactNode }) {
+  // We manage the audio element entirely via ref, no DOM <audio> in JSX
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const currentAyahRef = useRef<CurrentAyah | null>(null);
   const autoPlayNextRef = useRef(defaultSettings.autoPlayNext);
@@ -93,7 +94,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [volume, setVolumeState] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
 
-  // Sync refs with state via effects
+  // Sync refs with state
   useEffect(() => {
     currentAyahRef.current = currentAyah;
   }, [currentAyah]);
@@ -102,24 +103,27 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     autoPlayNextRef.current = settings.autoPlayNext;
   }, [settings.autoPlayNext]);
 
-  // Set up audio event listeners once on mount
+  // Create audio element on mount, destroy on unmount
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    const audio = new Audio();
+    audio.preload = "auto";
+    audio.muted = true; // Must start muted for autoplay bypass
+    audioRef.current = audio;
 
-    const handleWaiting = () => setStatus("loading");
-    const handlePlaying = () => {
+    const onWaiting = () => setStatus("loading");
+    const onPlaying = () => {
       setStatus("playing");
       setErrorMessage(null);
     };
-    const handlePause = () => {
+    const onPause = () => {
       if (!audio.ended) setStatus("paused");
     };
-    const handleError = () => {
-      setStatus("error");
-      setErrorMessage("Audio could not be loaded. Please try again.");
+    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const onLoadedMeta = () => {
+      setDuration(audio.duration);
+      setErrorMessage(null);
     };
-    const handleEnded = () => {
+    const onEnded = () => {
       const activeAyah = currentAyahRef.current;
       if (
         autoPlayNextRef.current &&
@@ -135,42 +139,42 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setStatus("loading");
         audio.src = getAyahAudioUrl(nextNum, activeAyah.reciterId);
         audio.currentTime = 0;
-        void audio.play().catch(() => {
+        audio.play().catch(() => {
           setStatus("error");
-          setErrorMessage("Auto-play blocked by browser.");
+          setErrorMessage("Auto-play blocked.");
         });
         return;
       }
       setStatus("idle");
     };
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-      setErrorMessage(null);
+    const onError = () => {
+      setStatus("error");
+      setErrorMessage("Audio could not be loaded.");
     };
 
-    audio.addEventListener("waiting", handleWaiting);
-    audio.addEventListener("playing", handlePlaying);
-    audio.addEventListener("pause", handlePause);
-    audio.addEventListener("error", handleError);
-    audio.addEventListener("ended", handleEnded);
-    audio.addEventListener("timeupdate", handleTimeUpdate);
-    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("waiting", onWaiting);
+    audio.addEventListener("playing", onPlaying);
+    audio.addEventListener("pause", onPause);
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("loadedmetadata", onLoadedMeta);
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("error", onError);
 
     return () => {
       audio.pause();
       audio.src = "";
-      audio.removeEventListener("waiting", handleWaiting);
-      audio.removeEventListener("playing", handlePlaying);
-      audio.removeEventListener("pause", handlePause);
-      audio.removeEventListener("error", handleError);
-      audio.removeEventListener("ended", handleEnded);
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
-      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("waiting", onWaiting);
+      audio.removeEventListener("playing", onPlaying);
+      audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("loadedmetadata", onLoadedMeta);
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("error", onError);
+      audioRef.current = null;
     };
   }, []);
 
-  // Sync volume/muted to audio element
+  // Sync volume/muted to audio element when they change
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -197,34 +201,35 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setStatus("loading");
       setErrorMessage(null);
 
-      // Bypass autoplay policy: browsers allow muted audio to play
-      // Save user's mute state, force mute, set source, then unmute after play starts
-      const userMuted = audio.muted;
-      const userVolume = audio.volume;
+      // MUTED AUTOPLAY TECHNIQUE (used by YouTube, Spotify, etc.):
+      // Browsers allow muted audio to play() without user gesture.
+      // We force-mute, set source, play, then restore user settings.
       audio.muted = true;
-      audio.volume = 1;
-
       audio.src = audioUrl;
       audio.currentTime = 0;
 
-      // play() will succeed because audio is muted
-      audio.play().then(() => {
-        // Now restore user's audio preferences
-        audio.muted = userMuted;
-        audio.volume = userVolume;
-      }).catch((err) => {
-        console.error("Playback error:", err);
-        audio.muted = userMuted;
-        audio.volume = userVolume;
-        setStatus("error");
-        if (err.name === "NotAllowedError") {
-          setErrorMessage("Browser blocked playback. Please click/tap again.");
-        } else {
-          setErrorMessage("Audio could not be loaded. The source may be unavailable.");
-        }
-      });
+      // Call play() synchronously within this user gesture
+      const promise = audio.play();
+
+      if (promise !== undefined) {
+        promise.then(() => {
+          // Playback started muted - now restore user preferences
+          audio.muted = isMuted;
+          audio.volume = volume;
+        }).catch((err: DOMException) => {
+          console.error("Play failed:", err.name, err.message);
+          setStatus("error");
+          if (err.name === "NotAllowedError") {
+            setErrorMessage("Browser blocked playback. Tap play again.");
+          } else if (err.name === "NotSupportedError") {
+            setErrorMessage("Audio format not supported.");
+          } else {
+            setErrorMessage("Audio could not be loaded.");
+          }
+        });
+      }
     },
-    [settings.reciterId],
+    [settings.reciterId, volume, isMuted],
   );
 
   const pause = useCallback(() => {
@@ -238,18 +243,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const audio = audioRef.current;
     if (!audio || !currentAyahRef.current) return;
     setStatus("loading");
-
-    // Resume also may need muted bypass if called without user gesture
-    const userMuted = audio.muted;
-    const userVolume = audio.volume;
-    audio.muted = true;
-
-    audio.play().then(() => {
-      audio.muted = userMuted;
-      audio.volume = userVolume;
-    }).catch(() => {
-      audio.muted = userMuted;
-      audio.volume = userVolume;
+    audio.play().catch(() => {
       setStatus("error");
       setErrorMessage("Browser blocked playback. Tap play again.");
     });
@@ -415,13 +409,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   return (
     <AudioContext.Provider value={value}>
       {children}
-      <audio
-        ref={audioRef}
-        preload="auto"
-        muted
-        style={{ display: "none" }}
-        aria-hidden="true"
-      />
     </AudioContext.Provider>
   );
 }

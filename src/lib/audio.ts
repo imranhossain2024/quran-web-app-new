@@ -4,7 +4,7 @@ export interface AudioReciter {
   id: string;
   name: string;
   description: string;
-  bitrate: 128 | 64;
+  bitrate: 192 | 128 | 64;
 }
 
 export const AUDIO_RECITERS: AudioReciter[] = [
@@ -18,7 +18,7 @@ export const AUDIO_RECITERS: AudioReciter[] = [
     id: "ar.abdurrahmaansudais",
     name: "Abdurrahman As-Sudais",
     description: "Haram recitation style, powerful and familiar",
-    bitrate: 128,
+    bitrate: 192,
   },
   {
     id: "ar.husary",
